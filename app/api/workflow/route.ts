@@ -42,6 +42,13 @@ export async function PUT(request: Request) {
       notifyOnManualRequired,
       flexcubeEndpoint,
       flexcubeEnabled,
+      // FlexCube SOAP configuration
+      flexcubeCustomerServiceUrl,
+      flexcubeAccountServiceUrl,
+      flexcubeUserId,
+      flexcubeSource,
+      flexcubeBranch,
+      flexcubeTimeout,
       updatedBy,
     } = body;
 
@@ -59,6 +66,13 @@ export async function PUT(request: Request) {
     if (notifyOnManualRequired !== undefined) updateData.notifyOnManualRequired = notifyOnManualRequired;
     if (flexcubeEndpoint !== undefined) updateData.flexcubeEndpoint = flexcubeEndpoint;
     if (flexcubeEnabled !== undefined) updateData.flexcubeEnabled = flexcubeEnabled;
+    // FlexCube SOAP configuration
+    if (flexcubeCustomerServiceUrl !== undefined) updateData.flexcubeCustomerServiceUrl = flexcubeCustomerServiceUrl;
+    if (flexcubeAccountServiceUrl !== undefined) updateData.flexcubeAccountServiceUrl = flexcubeAccountServiceUrl;
+    if (flexcubeUserId !== undefined) updateData.flexcubeUserId = flexcubeUserId;
+    if (flexcubeSource !== undefined) updateData.flexcubeSource = flexcubeSource;
+    if (flexcubeBranch !== undefined) updateData.flexcubeBranch = flexcubeBranch;
+    if (flexcubeTimeout !== undefined) updateData.flexcubeTimeout = flexcubeTimeout;
     if (updatedBy !== undefined) updateData.updatedBy = updatedBy;
 
     // Upsert - create if not exists, update if exists

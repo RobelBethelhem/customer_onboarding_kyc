@@ -14,8 +14,14 @@ interface WorkflowSettings {
   requireManualReviewAbove: number;
   notifyOnAutoApproval: boolean;
   notifyOnManualRequired: boolean;
-  flexcubeEndpoint: string;
   flexcubeEnabled: boolean;
+  flexcubeCustomerServiceUrl: string;
+  flexcubeAccountServiceUrl: string;
+  flexcubeUserId: string;
+  flexcubeSource: string;
+  flexcubeBranch: string;
+  flexcubeTimeout: number;
+  flexcubeEndpoint: string;
 }
 
 const defaultWorkflowSettings: WorkflowSettings = {
@@ -25,8 +31,14 @@ const defaultWorkflowSettings: WorkflowSettings = {
   requireManualReviewAbove: 100000,
   notifyOnAutoApproval: true,
   notifyOnManualRequired: true,
-  flexcubeEndpoint: 'http://localhost:5000/api/flexcube/create-customer',
   flexcubeEnabled: true,
+  flexcubeCustomerServiceUrl: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+  flexcubeAccountServiceUrl: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  flexcubeUserId: 'IB_SER',
+  flexcubeSource: 'EXTFYDA',
+  flexcubeBranch: '103',
+  flexcubeTimeout: 30000,
+  flexcubeEndpoint: 'http://localhost:5000/api/flexcube/create-customer',
 };
 
 export default function SettingsPage() {
@@ -73,8 +85,14 @@ export default function SettingsPage() {
           requireManualReviewAbove: data.data.requireManualReviewAbove || 100000,
           notifyOnAutoApproval: data.data.notifyOnAutoApproval ?? true,
           notifyOnManualRequired: data.data.notifyOnManualRequired ?? true,
-          flexcubeEndpoint: data.data.flexcubeEndpoint || 'http://localhost:5000/api/flexcube/create-customer',
           flexcubeEnabled: data.data.flexcubeEnabled ?? true,
+          flexcubeCustomerServiceUrl: data.data.flexcubeCustomerServiceUrl || 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+          flexcubeAccountServiceUrl: data.data.flexcubeAccountServiceUrl || 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+          flexcubeUserId: data.data.flexcubeUserId || 'IB_SER',
+          flexcubeSource: data.data.flexcubeSource || 'EXTFYDA',
+          flexcubeBranch: data.data.flexcubeBranch || '103',
+          flexcubeTimeout: data.data.flexcubeTimeout || 30000,
+          flexcubeEndpoint: data.data.flexcubeEndpoint || 'http://localhost:5000/api/flexcube/create-customer',
         });
       }
     } catch (err) {
@@ -421,14 +439,15 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                {/* FlexCube Settings */}
+                {/* FlexCube Core Banking SOAP Integration */}
                 <div className="pt-4 border-t">
-                  <h3 className="font-medium text-gray-900 mb-4">FlexCube Integration</h3>
+                  <h3 className="font-medium text-gray-900 mb-1">FlexCube Core Banking (SOAP)</h3>
+                  <p className="text-sm text-gray-500 mb-4">Connect to Oracle FlexCube Universal Banking for real CIF and Account creation</p>
 
                   <div className="flex items-center justify-between py-3">
                     <div>
                       <p className="font-medium text-gray-900">Enable FlexCube Integration</p>
-                      <p className="text-sm text-gray-500">Call FlexCube webservice to create customer accounts</p>
+                      <p className="text-sm text-gray-500">Call FlexCube SOAP webservice for CIF + Account creation</p>
                     </div>
                     <button
                       onClick={() => setWorkflowSettings({
@@ -447,21 +466,118 @@ export default function SettingsPage() {
                     </button>
                   </div>
 
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      FlexCube Endpoint URL
-                    </label>
-                    <input
-                      type="text"
-                      value={workflowSettings.flexcubeEndpoint}
-                      onChange={(e) => setWorkflowSettings({
-                        ...workflowSettings,
-                        flexcubeEndpoint: e.target.value,
-                      })}
-                      placeholder="http://localhost:5000/api/flexcube/create-customer"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
-                    />
-                  </div>
+                  {!workflowSettings.flexcubeEnabled && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-700">
+                        <span className="font-medium">FlexCube disabled:</span> CIF and Account numbers will be generated locally (not in core banking).
+                      </p>
+                    </div>
+                  )}
+
+                  {workflowSettings.flexcubeEnabled && (
+                    <div className="space-y-4 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          CIF Service URL (FCUBSCustomerService)
+                        </label>
+                        <input
+                          type="text"
+                          value={workflowSettings.flexcubeCustomerServiceUrl}
+                          onChange={(e) => setWorkflowSettings({
+                            ...workflowSettings,
+                            flexcubeCustomerServiceUrl: e.target.value,
+                          })}
+                          placeholder="http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Account Service URL (FCUBSAccService)
+                        </label>
+                        <input
+                          type="text"
+                          value={workflowSettings.flexcubeAccountServiceUrl}
+                          onChange={(e) => setWorkflowSettings({
+                            ...workflowSettings,
+                            flexcubeAccountServiceUrl: e.target.value,
+                          })}
+                          placeholder="http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            User ID
+                          </label>
+                          <input
+                            type="text"
+                            value={workflowSettings.flexcubeUserId}
+                            onChange={(e) => setWorkflowSettings({
+                              ...workflowSettings,
+                              flexcubeUserId: e.target.value,
+                            })}
+                            placeholder="IB_SER"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Source
+                          </label>
+                          <input
+                            type="text"
+                            value={workflowSettings.flexcubeSource}
+                            onChange={(e) => setWorkflowSettings({
+                              ...workflowSettings,
+                              flexcubeSource: e.target.value,
+                            })}
+                            placeholder="EXTFYDA"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Default Branch
+                          </label>
+                          <input
+                            type="text"
+                            value={workflowSettings.flexcubeBranch}
+                            onChange={(e) => setWorkflowSettings({
+                              ...workflowSettings,
+                              flexcubeBranch: e.target.value,
+                            })}
+                            placeholder="103"
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          SOAP Timeout (ms)
+                        </label>
+                        <input
+                          type="number"
+                          value={workflowSettings.flexcubeTimeout}
+                          onChange={(e) => setWorkflowSettings({
+                            ...workflowSettings,
+                            flexcubeTimeout: parseInt(e.target.value) || 30000,
+                          })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700">
+                          <span className="font-medium">Flow:</span> CreateCustomer (CIF) → CreateCustAcc (Account). Both calls use SOAP/XML over HTTP to the FlexCube FCUBS endpoints.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Notifications */}
@@ -715,9 +831,9 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">FlexCube</span>
+                  <span className="text-gray-500">FlexCube CBS</span>
                   <span className={`font-medium ${workflowSettings.flexcubeEnabled ? 'text-green-600' : 'text-gray-400'}`}>
-                    {workflowSettings.flexcubeEnabled ? 'Enabled' : 'Disabled'}
+                    {workflowSettings.flexcubeEnabled ? 'SOAP Enabled' : 'Disabled (Local)'}
                   </span>
                 </div>
               </div>

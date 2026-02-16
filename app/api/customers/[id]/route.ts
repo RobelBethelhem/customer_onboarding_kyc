@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
+import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
+import { createCustomerAndAccount, FlexCubeConfig } from '@/lib/flexcube';
+
+/**
+ * Build FlexCube config from workflow settings
+ */
+function getFlexCubeConfig(settings: any): FlexCubeConfig {
+  return {
+    customerServiceUrl: settings?.flexcubeCustomerServiceUrl || 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+    accountServiceUrl: settings?.flexcubeAccountServiceUrl || 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+    userId: settings?.flexcubeUserId || 'IB_SER',
+    source: settings?.flexcubeSource || 'EXTFYDA',
+    defaultBranch: settings?.flexcubeBranch || '103',
+    timeout: settings?.flexcubeTimeout || 30000,
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -50,144 +66,153 @@ export async function PATCH(
       );
     }
 
-    if (action === 'approve') {
-      // ========== CIF GENERATION ==========
-      // Check if customer with same name already exists (reuse CIF if found)
-      const nameParts = customer.fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts[nameParts.length - 1] || '';
-      const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
-
-      // Search for existing customer by name match
-      const existingCustomer = await Customer.findOne({
-        $or: [
-          { fullName: customer.fullName },
-          {
-            $and: [
-              { fullName: { $regex: new RegExp(firstName, 'i') } },
-              { fullName: { $regex: new RegExp(lastName, 'i') } }
-            ]
-          },
-          ...(middleName ? [{ fullName: { $regex: new RegExp(middleName, 'i') } }] : [])
-        ],
-        cifNumber: { $exists: true, $ne: null, $ne: '' },
-        _id: { $ne: customer._id }
-      }).select('cifNumber fullName');
-
-      let cifNumber: string;
-      if (existingCustomer) {
-        // Reuse existing CIF
-        cifNumber = existingCustomer.cifNumber!;
-        console.log(`[CIF] Reusing CIF ${cifNumber} from existing customer: ${existingCustomer.fullName}`);
-      } else {
-        // Generate new 7-digit CIF (sequential)
-        const lastCustomerWithCif = await Customer.findOne({
-          cifNumber: { $exists: true, $ne: null, $ne: '' }
-        }).sort({ cifNumber: -1 });
-
-        let nextCifNumber = 1;
-        if (lastCustomerWithCif?.cifNumber) {
-          // Extract numeric part and increment
-          const lastCif = parseInt(lastCustomerWithCif.cifNumber, 10);
-          nextCifNumber = isNaN(lastCif) ? 1 : lastCif + 1;
-        }
-        cifNumber = String(nextCifNumber).padStart(7, '0');
-        console.log(`[CIF] Generated new CIF: ${cifNumber}`);
+    if (action === 'approve' || action === 'auto_approve') {
+      // ========== LOAD FLEXCUBE SETTINGS ==========
+      let settings = await WorkflowSettings.findById('default');
+      if (!settings) {
+        settings = await WorkflowSettings.create(defaultWorkflowSettings);
       }
 
-      // ========== ACCOUNT NUMBER GENERATION ==========
-      // Format: [BranchCode][Random 2 digits][1][7-digit CIF][Random 3 digits]
-      // Example: 031 + 45 + 1 + 0000001 + 789 = 03145100000017890
-      const branchCode = customer.branchCode || '016';
-      const random2Digits = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-      const fixedDigit = '1';
-      const random3Digits = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-      const accountNumber = `${branchCode}${random2Digits}${fixedDigit}${cifNumber}${random3Digits}`;
+      const flexcubeEnabled = settings.flexcubeEnabled !== false;
+      const flexcubeConfig = getFlexCubeConfig(settings);
 
-      console.log(`[Account] Generated account number: ${accountNumber}`);
-      console.log(`  - Branch Code: ${branchCode}`);
-      console.log(`  - Random 2 Digits: ${random2Digits}`);
-      console.log(`  - Fixed Digit: ${fixedDigit}`);
-      console.log(`  - CIF: ${cifNumber}`);
-      console.log(`  - Random 3 Digits: ${random3Digits}`);
+      // Parse name parts
+      const nameParts = customer.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
+      const lastName = nameParts[nameParts.length - 1] || '';
+
+      let cifNumber: string | undefined;
+      let accountNumber: string | undefined;
+      let flexcubeMessage: string = '';
+
+      if (flexcubeEnabled) {
+        // ========== REAL FLEXCUBE INTEGRATION ==========
+        // Call FlexCube SOAP webservice to create CIF + Account
+        console.log(`\n[FlexCube] Starting ${action} for customer: ${customer.fullName} (${customer.customerId})`);
+
+        const result = await createCustomerAndAccount({
+          fullName: customer.fullName,
+          firstName,
+          middleName,
+          lastName,
+          dateOfBirth: customer.dateOfBirth || '',
+          gender: customer.gender === 'female' ? 'F' : 'M',
+          phone: customer.phone || '',
+          email: customer.email || '',
+          motherMaidenName: customer.motherMaidenName || '',
+          maritalStatus: customer.maritalStatus || 'S',
+          uin: customer.uin || '',
+          region: customer.region || '',
+          zone: customer.zone || '',
+          woreda: customer.woreda || '',
+          kebele: customer.kebele || '',
+          houseNumber: customer.houseNumber || '',
+          occupation: customer.occupation || 'O',
+          industry: customer.industry || 'O',
+          wealthSource: customer.wealthSource || 'SAL',
+          annualIncome: customer.annualIncome || 0,
+          branchCode: customer.branchCode || flexcubeConfig.defaultBranch,
+          accountTypeId: customer.accountTypeId || 'SPRI',
+          promotionType: customer.promotionType || 'MAPP',
+          customerSegmentation: customer.customerSegmentation || 'RETAIL CUSTOMER',
+        }, flexcubeConfig);
+
+        if (result.success) {
+          cifNumber = result.cifNumber;
+          accountNumber = result.accountNumber;
+          flexcubeMessage = result.message;
+          console.log(`[FlexCube] SUCCESS — CIF: ${cifNumber}, Account: ${accountNumber}`);
+        } else {
+          // FlexCube failed — return error, do NOT approve without real CIF
+          console.error(`[FlexCube] FAILED — ${result.message}`);
+
+          // If CIF was created but account failed, still save the CIF
+          if (result.cifNumber) {
+            customer.cifNumber = result.cifNumber;
+            customer.customerNumber = result.cifNumber;
+            await customer.save();
+          }
+
+          return NextResponse.json({
+            success: false,
+            error: `FlexCube integration failed: ${result.message}`,
+            cifNumber: result.cifNumber || undefined,
+          }, { status: 502 });
+        }
+      } else {
+        // ========== FLEXCUBE DISABLED — FALLBACK LOCAL GENERATION ==========
+        console.log(`[FlexCube] DISABLED — using local CIF/Account generation`);
+
+        // Check if customer with same name already exists (reuse CIF)
+        const existingCustomer = await Customer.findOne({
+          $or: [
+            { fullName: customer.fullName },
+            {
+              $and: [
+                { fullName: { $regex: new RegExp(firstName, 'i') } },
+                { fullName: { $regex: new RegExp(lastName, 'i') } }
+              ]
+            },
+          ],
+          cifNumber: { $exists: true, $nin: [null, ''] },
+          _id: { $ne: customer._id }
+        }).select('cifNumber fullName');
+
+        if (existingCustomer?.cifNumber) {
+          cifNumber = existingCustomer.cifNumber;
+          console.log(`[Local] Reusing CIF ${cifNumber} from: ${existingCustomer.fullName}`);
+        } else {
+          const lastCustomerWithCif = await Customer.findOne({
+            cifNumber: { $exists: true, $nin: [null, ''] }
+          }).sort({ cifNumber: -1 });
+
+          let nextCifNumber = 1;
+          if (lastCustomerWithCif?.cifNumber) {
+            const lastCif = parseInt(lastCustomerWithCif.cifNumber, 10);
+            nextCifNumber = isNaN(lastCif) ? 1 : lastCif + 1;
+          }
+          cifNumber = String(nextCifNumber).padStart(7, '0');
+          console.log(`[Local] Generated CIF: ${cifNumber}`);
+        }
+
+        // Generate account number locally
+        const branchCode = customer.branchCode || '016';
+        const random2 = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+        const random3 = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+        accountNumber = `${branchCode}${random2}1${cifNumber}${random3}`;
+        flexcubeMessage = `Local generation (FlexCube disabled) — CIF: ${cifNumber}, Account: ${accountNumber}`;
+      }
 
       // ========== UPDATE CUSTOMER ==========
-      customer.status = 'approved';
+      customer.status = action === 'auto_approve' ? 'auto_approved' : 'approved';
       customer.approvedAt = new Date();
-      customer.customerNumber = `CIF${cifNumber}`; // Legacy field
+      customer.customerNumber = cifNumber;
       customer.cifNumber = cifNumber;
       customer.accountNumber = accountNumber;
       if (approvedBy) customer.approvedBy = approvedBy;
 
-      // ========== SMS SIMULATION ==========
-      console.log(`\n========== SMS SIMULATION ==========`);
-      console.log(`To: ${customer.phone}`);
-      console.log(`Message: Dear ${customer.fullName}, your Zemen Bank account has been created successfully!`);
-      console.log(`  CIF Number: ${cifNumber}`);
-      console.log(`  Account Number: ${accountNumber}`);
-      console.log(`  Branch: ${customer.branch} (${branchCode})`);
-      console.log(`Welcome to Zemen Bank!`);
+      // ========== LOG ==========
+      console.log(`\n========== ACCOUNT CREATED ==========`);
+      console.log(`Customer: ${customer.fullName} (${customer.customerId})`);
+      console.log(`CIF Number: ${cifNumber}`);
+      console.log(`Account Number: ${accountNumber}`);
+      console.log(`Branch: ${customer.branch} (${customer.branchCode})`);
+      console.log(`Mode: ${action === 'auto_approve' ? 'Auto-Approved' : 'Manual Approval'}`);
+      console.log(`FlexCube: ${flexcubeEnabled ? 'ENABLED (real CBS)' : 'DISABLED (local)'}`);
+      console.log(`Message: ${flexcubeMessage}`);
       console.log(`====================================\n`);
+
+      // ========== SMS NOTIFICATION (simulated) ==========
+      console.log(`[SMS] To: ${customer.phone}`);
+      console.log(`[SMS] Dear ${customer.fullName}, your Zemen Bank account has been created!`);
+      console.log(`[SMS] CIF: ${cifNumber} | Account: ${accountNumber}`);
 
     } else if (action === 'reject') {
       customer.status = 'rejected';
       customer.rejectedAt = new Date();
       customer.rejectionReason = rejectionReason || 'No reason provided';
       if (rejectedBy) customer.rejectedBy = rejectedBy;
-
-    } else if (action === 'auto_approve') {
-      // Use same CIF and account generation logic as approve
-      const nameParts = customer.fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts[nameParts.length - 1] || '';
-      const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
-
-      const existingCustomer = await Customer.findOne({
-        $or: [
-          { fullName: customer.fullName },
-          {
-            $and: [
-              { fullName: { $regex: new RegExp(firstName, 'i') } },
-              { fullName: { $regex: new RegExp(lastName, 'i') } }
-            ]
-          },
-          ...(middleName ? [{ fullName: { $regex: new RegExp(middleName, 'i') } }] : [])
-        ],
-        cifNumber: { $exists: true, $ne: null, $ne: '' },
-        _id: { $ne: customer._id }
-      }).select('cifNumber fullName');
-
-      let cifNumber: string;
-      if (existingCustomer) {
-        cifNumber = existingCustomer.cifNumber!;
-        console.log(`[Auto-Approve CIF] Reusing CIF ${cifNumber} from existing customer: ${existingCustomer.fullName}`);
-      } else {
-        const lastCustomerWithCif = await Customer.findOne({
-          cifNumber: { $exists: true, $ne: null, $ne: '' }
-        }).sort({ cifNumber: -1 });
-
-        let nextCifNumber = 1;
-        if (lastCustomerWithCif?.cifNumber) {
-          const lastCif = parseInt(lastCustomerWithCif.cifNumber, 10);
-          nextCifNumber = isNaN(lastCif) ? 1 : lastCif + 1;
-        }
-        cifNumber = String(nextCifNumber).padStart(7, '0');
-        console.log(`[Auto-Approve CIF] Generated new CIF: ${cifNumber}`);
-      }
-
-      const branchCode = customer.branchCode || '016';
-      const random2Digits = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-      const fixedDigit = '1';
-      const random3Digits = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-      const accountNumber = `${branchCode}${random2Digits}${fixedDigit}${cifNumber}${random3Digits}`;
-
-      customer.status = 'auto_approved';
-      customer.approvedAt = new Date();
-      customer.customerNumber = `CIF${cifNumber}`;
-      customer.cifNumber = cifNumber;
-      customer.accountNumber = accountNumber;
-
-      console.log(`[Auto-Approve] Account created - CIF: ${cifNumber}, Account: ${accountNumber}`);
 
     } else {
       // General update

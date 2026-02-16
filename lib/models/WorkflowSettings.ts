@@ -10,8 +10,16 @@ export interface IWorkflowSettings extends Document {
   requireManualReviewAbove: number;
   notifyOnAutoApproval: boolean;
   notifyOnManualRequired: boolean;
-  flexcubeEndpoint: string;
+  // FlexCube Core Banking SOAP Configuration
   flexcubeEnabled: boolean;
+  flexcubeCustomerServiceUrl: string;
+  flexcubeAccountServiceUrl: string;
+  flexcubeUserId: string;
+  flexcubeSource: string;
+  flexcubeBranch: string;
+  flexcubeTimeout: number;
+  // Legacy (kept for backward compat)
+  flexcubeEndpoint: string;
   updatedAt: Date;
   updatedBy: string;
 }
@@ -45,13 +53,39 @@ const WorkflowSettingsSchema = new Schema<IWorkflowSettings>({
     type: Boolean,
     default: true,
   },
-  flexcubeEndpoint: {
-    type: String,
-    default: 'http://localhost:5000/api/flexcube/create-customer',
-  },
+  // FlexCube Core Banking SOAP Configuration
   flexcubeEnabled: {
     type: Boolean,
     default: true,
+  },
+  flexcubeCustomerServiceUrl: {
+    type: String,
+    default: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+  },
+  flexcubeAccountServiceUrl: {
+    type: String,
+    default: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  },
+  flexcubeUserId: {
+    type: String,
+    default: 'IB_SER',
+  },
+  flexcubeSource: {
+    type: String,
+    default: 'EXTFYDA',
+  },
+  flexcubeBranch: {
+    type: String,
+    default: '103',
+  },
+  flexcubeTimeout: {
+    type: Number,
+    default: 30000,
+  },
+  // Legacy endpoint (kept for backward compat)
+  flexcubeEndpoint: {
+    type: String,
+    default: 'http://localhost:5000/api/flexcube/create-customer',
   },
   updatedBy: {
     type: String,
@@ -71,8 +105,14 @@ export const defaultWorkflowSettings: Partial<IWorkflowSettings> = {
   requireManualReviewAbove: 100000,
   notifyOnAutoApproval: true,
   notifyOnManualRequired: true,
-  flexcubeEndpoint: 'http://localhost:5000/api/flexcube/create-customer',
   flexcubeEnabled: true,
+  flexcubeCustomerServiceUrl: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+  flexcubeAccountServiceUrl: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  flexcubeUserId: 'IB_SER',
+  flexcubeSource: 'EXTFYDA',
+  flexcubeBranch: '103',
+  flexcubeTimeout: 30000,
+  flexcubeEndpoint: 'http://localhost:5000/api/flexcube/create-customer',
   updatedBy: 'system',
 };
 

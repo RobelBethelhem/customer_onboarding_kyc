@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
 import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
+import { createCustomerAndAccount, FlexCubeConfig } from '@/lib/flexcube';
 
 // Increase body size limit — mobile app sends photos as base64 (can be 10MB+)
 export const maxDuration = 60; // seconds
@@ -22,51 +23,70 @@ async function generateCustomerId(): Promise<string> {
   return `ZMN-${String(nextNum).padStart(5, '0')}`;
 }
 
-// Call FlexCube webservice to create customer
-async function callFlexCubeService(customerData: any, endpoint: string): Promise<{
+/**
+ * Build FlexCube config from workflow settings
+ */
+function getFlexCubeConfig(settings: any): FlexCubeConfig {
+  return {
+    customerServiceUrl: settings?.flexcubeCustomerServiceUrl || 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+    accountServiceUrl: settings?.flexcubeAccountServiceUrl || 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+    userId: settings?.flexcubeUserId || 'IB_SER',
+    source: settings?.flexcubeSource || 'EXTFYDA',
+    defaultBranch: settings?.flexcubeBranch || '103',
+    timeout: settings?.flexcubeTimeout || 30000,
+  };
+}
+
+/**
+ * Call FlexCube SOAP webservice to create CIF + Account
+ * Used during auto-approval flow
+ */
+async function callFlexCubeService(customerData: any, settings: any): Promise<{
   success: boolean;
-  customerNumber?: string;
+  cifNumber?: string;
+  accountNumber?: string;
   error?: string;
 }> {
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fullName: customerData.fullName,
-        phone: customerData.phone,
-        uin: customerData.uin,
-        fcn: customerData.fcn,
-        accountType: customerData.accountType,
-        branch: customerData.branch,
-        dateOfBirth: customerData.dateOfBirth,
-        gender: customerData.gender,
-        initialDeposit: customerData.initialDeposit,
-      }),
-    });
+    const config = getFlexCubeConfig(settings);
+    const nameParts = (customerData.fullName || '').trim().split(/\s+/);
 
-    if (response.ok) {
-      const result = await response.json();
-      return {
-        success: true,
-        customerNumber: result.customerNumber || result.cifNumber || `CIF${Date.now().toString().slice(-10)}`,
-      };
-    }
+    const result = await createCustomerAndAccount({
+      fullName: customerData.fullName || '',
+      firstName: nameParts[0] || '',
+      middleName: nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '',
+      lastName: nameParts[nameParts.length - 1] || '',
+      dateOfBirth: customerData.dateOfBirth || '',
+      gender: customerData.gender === 'F' ? 'F' : 'M',
+      phone: customerData.phone || '',
+      email: customerData.email || '',
+      motherMaidenName: customerData.motherMaidenName || '',
+      maritalStatus: customerData.maritalStatus || 'S',
+      uin: customerData.uin || '',
+      region: customerData.region || customerData.address1 || '',
+      zone: customerData.zone || customerData.address2 || '',
+      woreda: customerData.woreda || customerData.address3 || '',
+      occupation: customerData.occupation || 'O',
+      industry: customerData.industry || 'O',
+      wealthSource: customerData.wealthSource || 'SAL',
+      annualIncome: customerData.annualIncome || customerData.monthlyIncome || 0,
+      branchCode: customerData.branchCode || config.defaultBranch,
+      accountTypeId: customerData.accountTypeId || 'SPRI',
+      promotionType: customerData.promotionType || 'MAPP',
+      customerSegmentation: customerData.customerSegmentation || 'RETAIL CUSTOMER',
+    }, config);
 
-    // FlexCube service unavailable - generate CIF for demo purposes
-    console.log(`FlexCube service returned ${response.status}, generating demo CIF`);
     return {
-      success: true,
-      customerNumber: `CIF${Date.now().toString().slice(-10)}`,
+      success: result.success,
+      cifNumber: result.cifNumber,
+      accountNumber: result.accountNumber,
+      error: result.success ? undefined : result.message,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('FlexCube service error:', error);
-    // For demo purposes, generate a CIF number even if service fails
     return {
-      success: true,
-      customerNumber: `CIF${Date.now().toString().slice(-10)}`,
+      success: false,
+      error: error.message || 'FlexCube connection failed',
     };
   }
 }
@@ -110,6 +130,8 @@ export async function POST(request: Request) {
     //        liveness verification — KYC must manually verify the video.
     let status: 'pending' | 'auto_approved' = 'pending';
     let customerNumber: string | undefined;
+    let cifNumber: string | undefined;
+    let accountNumber: string | undefined;
     let approvedAt: Date | undefined;
     let workflowDecision: string;
 
@@ -127,15 +149,17 @@ export async function POST(request: Request) {
       const belowDepositLimit = initialDeposit <= settings.requireManualReviewAbove;
 
       if (meetsScoreThreshold && belowDepositLimit) {
-        // Auto approve - call FlexCube service
+        // Auto approve - call FlexCube SOAP service (CIF + Account creation)
         if (settings.flexcubeEnabled) {
-          const flexcubeResult = await callFlexCubeService(body, settings.flexcubeEndpoint);
+          const flexcubeResult = await callFlexCubeService(body, settings);
 
-          if (flexcubeResult.success) {
+          if (flexcubeResult.success && flexcubeResult.cifNumber) {
             status = 'auto_approved';
-            customerNumber = flexcubeResult.customerNumber;
+            customerNumber = flexcubeResult.cifNumber;
+            cifNumber = flexcubeResult.cifNumber;
+            accountNumber = flexcubeResult.accountNumber;
             approvedAt = new Date();
-            workflowDecision = `Auto-approved (mobile_app): Face match ${faceMatchScore}% >= ${settings.minFaceMatchScore}%, Deposit ${initialDeposit} ETB <= ${settings.requireManualReviewAbove} ETB`;
+            workflowDecision = `Auto-approved (mobile_app): Face match ${faceMatchScore}% >= ${settings.minFaceMatchScore}%, Deposit ${initialDeposit} ETB <= ${settings.requireManualReviewAbove} ETB. FlexCube CIF: ${flexcubeResult.cifNumber}, Account: ${flexcubeResult.accountNumber || 'pending'}`;
           } else {
             // FlexCube failed, send to manual review
             status = 'pending';
@@ -217,7 +241,10 @@ export async function POST(request: Request) {
       },
       // Face match score
       faceMatchScore,
+      // FlexCube numbers (only populated on auto-approval with FlexCube enabled)
       customerNumber,
+      cifNumber,
+      accountNumber,
       approvedAt,
       approvedBy: status === 'auto_approved' ? 'system' : undefined,
     };
