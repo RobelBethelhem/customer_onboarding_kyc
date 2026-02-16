@@ -60,11 +60,11 @@ const WorkflowSettingsSchema = new Schema<IWorkflowSettings>({
   },
   flexcubeCustomerServiceUrl: {
     type: String,
-    default: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
+    default: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
   },
   flexcubeAccountServiceUrl: {
     type: String,
-    default: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+    default: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
   },
   flexcubeUserId: {
     type: String,
@@ -106,8 +106,8 @@ export const defaultWorkflowSettings: Partial<IWorkflowSettings> = {
   notifyOnAutoApproval: true,
   notifyOnManualRequired: true,
   flexcubeEnabled: true,
-  flexcubeCustomerServiceUrl: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
-  flexcubeAccountServiceUrl: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  flexcubeCustomerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
+  flexcubeAccountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
   flexcubeUserId: 'IB_SER',
   flexcubeSource: 'EXTFYDA',
   flexcubeBranch: '103',

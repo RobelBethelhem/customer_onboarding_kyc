@@ -32,8 +32,8 @@ const defaultWorkflowSettings: WorkflowSettings = {
   notifyOnAutoApproval: true,
   notifyOnManualRequired: true,
   flexcubeEnabled: true,
-  flexcubeCustomerServiceUrl: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
-  flexcubeAccountServiceUrl: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  flexcubeCustomerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
+  flexcubeAccountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
   flexcubeUserId: 'IB_SER',
   flexcubeSource: 'EXTFYDA',
   flexcubeBranch: '103',
@@ -86,8 +86,8 @@ export default function SettingsPage() {
           notifyOnAutoApproval: data.data.notifyOnAutoApproval ?? true,
           notifyOnManualRequired: data.data.notifyOnManualRequired ?? true,
           flexcubeEnabled: data.data.flexcubeEnabled ?? true,
-          flexcubeCustomerServiceUrl: data.data.flexcubeCustomerServiceUrl || 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
-          flexcubeAccountServiceUrl: data.data.flexcubeAccountServiceUrl || 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+          flexcubeCustomerServiceUrl: data.data.flexcubeCustomerServiceUrl || 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
+          flexcubeAccountServiceUrl: data.data.flexcubeAccountServiceUrl || 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
           flexcubeUserId: data.data.flexcubeUserId || 'IB_SER',
           flexcubeSource: data.data.flexcubeSource || 'EXTFYDA',
           flexcubeBranch: data.data.flexcubeBranch || '103',
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                             ...workflowSettings,
                             flexcubeCustomerServiceUrl: e.target.value,
                           })}
-                          placeholder="http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService"
+                          placeholder="http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService"
                           className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
                         />
                       </div>
@@ -503,7 +503,7 @@ export default function SettingsPage() {
                             ...workflowSettings,
                             flexcubeAccountServiceUrl: e.target.value,
                           })}
-                          placeholder="http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService"
+                          placeholder="http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService"
                           className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
                         />
                       </div>

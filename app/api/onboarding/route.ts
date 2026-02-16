@@ -28,8 +28,8 @@ async function generateCustomerId(): Promise<string> {
  */
 function getFlexCubeConfig(settings: any): FlexCubeConfig {
   return {
-    customerServiceUrl: settings?.flexcubeCustomerServiceUrl || 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
-    accountServiceUrl: settings?.flexcubeAccountServiceUrl || 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+    customerServiceUrl: settings?.flexcubeCustomerServiceUrl || 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
+    accountServiceUrl: settings?.flexcubeAccountServiceUrl || 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
     userId: settings?.flexcubeUserId || 'IB_SER',
     source: settings?.flexcubeSource || 'EXTFYDA',
     defaultBranch: settings?.flexcubeBranch || '103',

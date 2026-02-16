@@ -84,8 +84,8 @@ export interface CreateAccountResult {
 // ─── Default Configuration ────────────────────────────────────────────────────
 
 export const defaultFlexCubeConfig: FlexCubeConfig = {
-  customerServiceUrl: 'http://10.1.245.150:7003/FCUBSCustomerService/FCUBSCustomerService',
-  accountServiceUrl: 'http://10.1.245.150:7003/FCUBSAccService/FCUBSAccService',
+  customerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
+  accountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
   userId: 'IB_SER',
   source: 'EXTFYDA',
   defaultBranch: '103',
