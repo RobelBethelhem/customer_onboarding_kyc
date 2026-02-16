@@ -119,6 +119,129 @@ export function getAccountClass(accountTypeId: string): string {
   return ACCOUNT_CLASS_MAP[accountTypeId] || 'SPRI';
 }
 
+// ─── FlexCube LOV (List of Values) Mappings ──────────────────────────────────
+// Our app uses short codes (EMP, IT, SAL, MAPP etc.) but FlexCube has its own
+// LOV values. These maps translate app codes → FlexCube-accepted values.
+// Update these if FlexCube LOV values change.
+
+/**
+ * Map app employment status → FlexCube EMPSTAT
+ * FlexCube error: "Invalid Value E for Field Employment"
+ * FlexCube accepts: U (Unemployed/Unknown), S (Self-Employed), etc.
+ * Using 'U' as safe default since the original sample XML used 'U'
+ */
+const FLEXCUBE_EMPSTAT_MAP: Record<string, string> = {
+  'EMP': 'U',    // Employed → U (FlexCube doesn't accept 'E')
+  'SELF': 'S',   // Self-Employed → S
+  'GOV': 'U',    // Government → U
+  'STU': 'U',    // Student → U
+  'RET': 'R',    // Retired → R
+  'O': 'U',      // Other → U
+};
+
+/**
+ * Map app occupation codes → FlexCube UDF OCCUPATION LOV
+ * FlexCube error: "For field OCCUPATION, EMP value is not available in LOV"
+ */
+const FLEXCUBE_OCCUPATION_MAP: Record<string, string> = {
+  'EMP': 'O',       // Employed → Other
+  'SELF': 'O',      // Self-Employed → Other
+  'GOV': 'O',       // Government → Other
+  'STU': 'O',       // Student → Other
+  'RET': 'O',       // Retired → Other
+  'O': 'O',         // Other → Other
+};
+
+/**
+ * Map app industry codes → FlexCube UDF INDUSTRY LOV
+ * FlexCube error: "For field INDUSTRY, IT value is not available in LOV"
+ */
+const FLEXCUBE_INDUSTRY_MAP: Record<string, string> = {
+  'AGR': 'O',    // Agriculture → Other
+  'MAN': 'O',    // Manufacturing → Other
+  'TRD': 'O',    // Trade → Other
+  'SER': 'O',    // Services → Other
+  'IT': 'O',     // IT → Other
+  'FIN': 'O',    // Finance → Other
+  'HLT': 'O',    // Healthcare → Other
+  'EDU': 'O',    // Education → Other
+  'O': 'O',      // Other → Other
+};
+
+/**
+ * Map app promotion type → FlexCube UDF PROMOTION_TYPE LOV
+ * FlexCube error: "For field PROMOTION_TYPE, MAPP value is not available in LOV"
+ */
+const FLEXCUBE_PROMOTION_MAP: Record<string, string> = {
+  'MAPP': 'MOBILE APP',     // Mobile App
+  'WEB': 'MOBILE APP',      // Web → Mobile App (closest)
+  'WHATSAPP': 'MOBILE APP', // WhatsApp → Mobile App
+};
+
+/**
+ * Format DOB for FlexCube — expects YYYY-MM-DD format
+ * Input may be: "2000/09/11", "2000-09-11", "09/11/2000", etc.
+ * FlexCube error: "Date of Birth cannot be blank"
+ */
+function formatDOB(dob: string): string {
+  if (!dob) return '';
+
+  // Already in YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) return dob;
+
+  // YYYY/MM/DD → YYYY-MM-DD
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(dob)) return dob.replace(/\//g, '-');
+
+  // MM/DD/YYYY → YYYY-MM-DD
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+    const parts = dob.split('/');
+    return `${parts[2]}-${parts[0]}-${parts[1]}`;
+  }
+
+  // DD-MM-YYYY → YYYY-MM-DD
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dob)) {
+    const parts = dob.split('-');
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+
+  // Try parsing as Date object
+  const d = new Date(dob);
+  if (!isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Return as-is if can't parse
+  return dob;
+}
+
+/**
+ * Format Fayda UIN for FlexCube SSN field
+ * FlexCube expects: nnn-nn-nnnn (e.g., "462-13-0284")
+ * Fayda UIN is 16 digits (e.g., "4621302843750872")
+ * We take first 9 digits and format as nnn-nn-nnnn
+ */
+function formatSSN(uin: string): string {
+  if (!uin) return '';
+
+  // Remove any existing dashes/spaces
+  const digits = uin.replace(/[\s-]/g, '');
+
+  // If already in nnn-nn-nnnn format, return as-is
+  if (/^\d{3}-\d{2}-\d{4}$/.test(uin)) return uin;
+
+  // Take first 9 digits and format as nnn-nn-nnnn
+  if (digits.length >= 9) {
+    return `${digits.substring(0, 3)}-${digits.substring(3, 5)}-${digits.substring(5, 9)}`;
+  }
+
+  // Pad if less than 9 digits
+  const padded = digits.padEnd(9, '0');
+  return `${padded.substring(0, 3)}-${padded.substring(3, 5)}-${padded.substring(5, 9)}`;
+}
+
 // ─── SOAP Envelope Builders ───────────────────────────────────────────────────
 
 function generateMsgId(): string {
@@ -148,14 +271,29 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
   const branch = data.branchCode || config.defaultBranch;
   const shortName = `${data.firstName.substring(0, 5).toUpperCase()}${data.lastName.substring(0, 4).toUpperCase()}`;
 
-  // Determine employment status code for FlexCube
-  const empStatMap: Record<string, string> = {
-    'EMP': 'E', 'SELF': 'S', 'GOV': 'G', 'STU': 'U', 'RET': 'R', 'O': 'O'
-  };
-  const empStat = empStatMap[data.occupation] || 'U';
+  // Map app values → FlexCube LOV values
+  const empStat = FLEXCUBE_EMPSTAT_MAP[data.occupation] || 'U';
+  const fcOccupation = FLEXCUBE_OCCUPATION_MAP[data.occupation] || 'O';
+  const fcIndustry = FLEXCUBE_INDUSTRY_MAP[data.industry] || 'O';
+  const fcPromotion = FLEXCUBE_PROMOTION_MAP[data.promotionType || 'MAPP'] || 'MOBILE APP';
+
+  // Format DOB to YYYY-MM-DD
+  const dob = formatDOB(data.dateOfBirth);
+
+  // Format Fayda UIN → SSN (nnn-nn-nnnn)
+  const ssn = formatSSN(data.uin);
 
   // Format salary (annual income / 12 for monthly)
   const monthlySalary = Math.round((data.annualIncome || 0) / 12);
+
+  console.log(`[FlexCube] Field mappings:`);
+  console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
+  console.log(`  SSN: "${data.uin}" → "${ssn}"`);
+  console.log(`  EMPSTAT: "${data.occupation}" → "${empStat}"`);
+  console.log(`  OCCUPATION UDF: "${data.occupation}" → "${fcOccupation}"`);
+  console.log(`  INDUSTRY UDF: "${data.industry}" → "${fcIndustry}"`);
+  console.log(`  PROMOTION_TYPE UDF: "${data.promotionType}" → "${fcPromotion}"`);
+  console.log(`  Monthly Salary: ${monthlySalary} ETB`);
 
   return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSCustomerService">
    <soapenv:Header/>
@@ -189,12 +327,12 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     <fcub:FULLNAME>${escapeXml(data.fullName.toUpperCase())}</fcub:FULLNAME>
                     <fcub:MEDIA>MAIL</fcub:MEDIA>
                     <fcub:LOC>CIF</fcub:LOC>
-                    <fcub:SSN>${escapeXml(data.uin)}</fcub:SSN>
+                    <fcub:SSN>${escapeXml(ssn)}</fcub:SSN>
                      <fcub:Custpersonal>
                         <fcub:FSTNAME>${escapeXml(data.firstName.toUpperCase())}</fcub:FSTNAME>
                         <fcub:MIDNAME>${escapeXml(data.middleName.toUpperCase())}</fcub:MIDNAME>
                         <fcub:LSTNAME>${escapeXml(data.lastName.toUpperCase())}</fcub:LSTNAME>
-                        <fcub:DOB>${escapeXml(data.dateOfBirth)}</fcub:DOB>
+                        <fcub:DOB>${escapeXml(dob)}</fcub:DOB>
                         <fcub:GENDR>${data.gender === 'F' ? 'F' : 'M'}</fcub:GENDR>
                         <fcub:TELEPHNO>${escapeXml(data.phone)}</fcub:TELEPHNO>
                         <fcub:EMAILID>${escapeXml((data.email || '').toUpperCase())}</fcub:EMAILID>
@@ -223,7 +361,7 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     </fcub:UDFDETAILS>
                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>PROMOTION_TYPE</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(data.promotionType || 'MAPP')}</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml(fcPromotion)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>CUSTOMER_SEGMENTATION</fcub:FLDNAM>
@@ -235,11 +373,11 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>OCCUPATION</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(data.occupation || 'O')}</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml(fcOccupation)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>INDUSTRY</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(data.industry || 'O')}</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml(fcIndustry)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>CUSTOMER_RISK_RATING</fcub:FLDNAM>
@@ -400,6 +538,9 @@ function extractErrorFromResponse(xml: string): string {
 // ─── SOAP HTTP Caller ─────────────────────────────────────────────────────────
 
 async function callSoapService(url: string, soapEnvelope: string, timeout: number): Promise<string> {
+  // Strip ?WSDL suffix — WSDL is for service definition, not SOAP POST calls
+  const cleanUrl = url.replace(/\?WSDL$/i, '');
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -409,7 +550,7 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
     console.log(`\n${'═'.repeat(80)}`);
     console.log(`[FlexCube SOAP] ▶ REQUEST  — ${timestamp}`);
     console.log(`${'─'.repeat(80)}`);
-    console.log(`[FlexCube SOAP] URL: ${url}`);
+    console.log(`[FlexCube SOAP] URL: ${cleanUrl}${cleanUrl !== url ? ` (stripped ?WSDL from: ${url})` : ''}`);
     console.log(`[FlexCube SOAP] Method: POST`);
     console.log(`[FlexCube SOAP] Content-Type: text/xml;charset=UTF-8`);
     console.log(`[FlexCube SOAP] Timeout: ${timeout}ms`);
@@ -422,7 +563,7 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
 
     const startTime = Date.now();
 
-    const response = await fetch(url, {
+    const response = await fetch(cleanUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/xml;charset=UTF-8',
@@ -476,14 +617,14 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
 
     if (error.name === 'AbortError') {
       console.log(`[FlexCube SOAP] TIMEOUT: Request aborted after ${timeout}ms`);
-      console.log(`[FlexCube SOAP] URL: ${url}`);
+      console.log(`[FlexCube SOAP] URL: ${cleanUrl}`);
       console.log(`${'═'.repeat(80)}\n`);
       throw new Error(`FlexCube SOAP timeout after ${timeout}ms`);
     }
 
     console.log(`[FlexCube SOAP] Error Type: ${error.name || 'Unknown'}`);
     console.log(`[FlexCube SOAP] Error Message: ${error.message}`);
-    console.log(`[FlexCube SOAP] URL: ${url}`);
+    console.log(`[FlexCube SOAP] URL: ${cleanUrl}`);
     if (error.cause) console.log(`[FlexCube SOAP] Cause: ${error.cause}`);
     console.log(`${'═'.repeat(80)}\n`);
 
@@ -536,18 +677,7 @@ export async function createCIF(
     console.log(`Branch: ${data.branchCode}`);
     console.log(`UIN: ${data.uin}`);
 
-    // Step 0: Check if customer already exists by UIN (Fayda ID)
-    const existingCif = await queryCustomerByUIN(data.uin, config);
-    if (existingCif) {
-      console.log(`[FlexCube] Customer already exists in CBS with CIF: ${existingCif}`);
-      return {
-        success: true,
-        cifNumber: existingCif,
-        message: `Customer already exists in FlexCube with CIF: ${existingCif}`,
-      };
-    }
-
-    // Step 1: Build and send CIF creation SOAP request
+    // Build and send CIF creation SOAP request (skip QueryCustomer — go straight to create)
     const envelope = buildCreateCustomerEnvelope(data, config);
     const response = await callSoapService(config.customerServiceUrl, envelope, config.timeout);
 
