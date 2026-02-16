@@ -403,9 +403,24 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  const timestamp = new Date().toISOString();
+
   try {
-    console.log(`[FlexCube SOAP] Calling: ${url}`);
-    console.log(`[FlexCube SOAP] Request length: ${soapEnvelope.length} chars`);
+    console.log(`\n${'═'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] ▶ REQUEST  — ${timestamp}`);
+    console.log(`${'─'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] URL: ${url}`);
+    console.log(`[FlexCube SOAP] Method: POST`);
+    console.log(`[FlexCube SOAP] Content-Type: text/xml;charset=UTF-8`);
+    console.log(`[FlexCube SOAP] Timeout: ${timeout}ms`);
+    console.log(`[FlexCube SOAP] Request Length: ${soapEnvelope.length} chars`);
+    console.log(`${'─'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] REQUEST XML:`);
+    console.log(`${'─'.repeat(80)}`);
+    console.log(soapEnvelope);
+    console.log(`${'─'.repeat(80)}`);
+
+    const startTime = Date.now();
 
     const response = await fetch(url, {
       method: 'POST',
@@ -420,8 +435,31 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
     clearTimeout(timeoutId);
 
     const responseText = await response.text();
-    console.log(`[FlexCube SOAP] Response status: ${response.status}`);
-    console.log(`[FlexCube SOAP] Response length: ${responseText.length} chars`);
+    const elapsed = Date.now() - startTime;
+
+    console.log(`\n${'═'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] ◀ RESPONSE — ${new Date().toISOString()} (${elapsed}ms)`);
+    console.log(`${'─'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] HTTP Status: ${response.status} ${response.statusText}`);
+    console.log(`[FlexCube SOAP] Response Length: ${responseText.length} chars`);
+    console.log(`[FlexCube SOAP] MSGSTAT: ${extractXmlValue(responseText, 'MSGSTAT') || 'N/A'}`);
+
+    // Extract key response values for quick debugging
+    const custNo = extractXmlValue(responseText, 'CUSTNO');
+    const accNo = extractXmlValue(responseText, 'ACC');
+    const ecode = extractXmlValue(responseText, 'ECODE');
+    const edesc = extractXmlValue(responseText, 'EDESC');
+
+    if (custNo) console.log(`[FlexCube SOAP] CUSTNO (CIF): ${custNo}`);
+    if (accNo) console.log(`[FlexCube SOAP] ACC (Account): ${accNo}`);
+    if (ecode) console.log(`[FlexCube SOAP] ERROR CODE: ${ecode}`);
+    if (edesc) console.log(`[FlexCube SOAP] ERROR DESC: ${edesc}`);
+
+    console.log(`${'─'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] RESPONSE XML:`);
+    console.log(`${'─'.repeat(80)}`);
+    console.log(responseText);
+    console.log(`${'═'.repeat(80)}\n`);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${responseText.substring(0, 500)}`);
@@ -430,9 +468,25 @@ async function callSoapService(url: string, soapEnvelope: string, timeout: numbe
     return responseText;
   } catch (error: any) {
     clearTimeout(timeoutId);
+
+    const elapsed = Date.now() - new Date(timestamp).getTime();
+    console.log(`\n${'═'.repeat(80)}`);
+    console.log(`[FlexCube SOAP] ✖ ERROR — ${new Date().toISOString()} (${elapsed}ms)`);
+    console.log(`${'─'.repeat(80)}`);
+
     if (error.name === 'AbortError') {
+      console.log(`[FlexCube SOAP] TIMEOUT: Request aborted after ${timeout}ms`);
+      console.log(`[FlexCube SOAP] URL: ${url}`);
+      console.log(`${'═'.repeat(80)}\n`);
       throw new Error(`FlexCube SOAP timeout after ${timeout}ms`);
     }
+
+    console.log(`[FlexCube SOAP] Error Type: ${error.name || 'Unknown'}`);
+    console.log(`[FlexCube SOAP] Error Message: ${error.message}`);
+    console.log(`[FlexCube SOAP] URL: ${url}`);
+    if (error.cause) console.log(`[FlexCube SOAP] Cause: ${error.cause}`);
+    console.log(`${'═'.repeat(80)}\n`);
+
     throw error;
   }
 }
