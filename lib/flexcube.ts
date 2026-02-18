@@ -358,17 +358,10 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
   // Annual income as decimal
   const annualIncome = (data.annualIncome || 0).toFixed(2);
 
-  // Passport issue date = yesterday (avoid timezone issues with FlexCube server)
-  // Expiry = +100 years (matching Fayda pattern)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const pptIssDt = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
-  const expiryDate = new Date(yesterday);
-  expiryDate.setFullYear(expiryDate.getFullYear() + 100);
-  const pptExpDt = expiryDate.toISOString().split('T')[0];
-
-  // Title based on gender — use MR/MRS (ATO not accepted by IB_SER user)
-  const title = data.gender === 'F' ? 'MRS' : 'MR';
+  // Passport dates — use safe past date (FlexCube server clock may be in 2025)
+  // Matching working Fayda XML pattern
+  const pptIssDt = '2025-01-01';
+  const pptExpDt = '2125-01-01';
 
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
@@ -425,7 +418,6 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:LANG>ENG</fcub:LANG>
                         <fcub:MINOR>N</fcub:MINOR>
                         <fcub:SAME_CORR_ADDR>Y</fcub:SAME_CORR_ADDR>
-                        <fcub:TITLE>${title}</fcub:TITLE>
                         <fcub:PAISSUED>N</fcub:PAISSUED>
                         <fcub:MOTHERMAIDN_NAME>${escapeXml((data.motherMaidenName || '').toUpperCase())}</fcub:MOTHERMAIDN_NAME>
                     </fcub:Custpersonal>
