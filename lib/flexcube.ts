@@ -363,8 +363,12 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
   const pptIssDt = '2025-01-01';
   const pptExpDt = '2125-01-01';
 
+  // SSN — FlexCube requires ann-an-naaa format derived from UIN
+  const ssn = formatSSN(data.uin);
+
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
+  console.log(`  SSN: "${data.uin}" → "${ssn}"`);
   console.log(`  NATIONID: "${data.uin}"`);
   console.log(`  OCCUPATION UDF: "${data.occupation}" → "${fcOccupation}"`);
   console.log(`  INDUSTRY UDF: "${data.industry}" → "${fcIndustry}"`);
@@ -396,6 +400,7 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     <fcub:ADDRLN4>${escapeXml((data.houseNumber || 'NO').toUpperCase())}</fcub:ADDRLN4>
                     <fcub:COUNTRY>ET</fcub:COUNTRY>
                     <fcub:SNAME>${escapeXml(shortName.substring(0, 25))}</fcub:SNAME>
+                    <fcub:SSN>${escapeXml(ssn)}</fcub:SSN>
                     <fcub:NLTY>ET</fcub:NLTY>
                     <fcub:CCATEG>INDI</fcub:CCATEG>
                     <fcub:FULLNAME>${escapeXml(data.fullName.toUpperCase())}</fcub:FULLNAME>
