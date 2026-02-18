@@ -400,7 +400,6 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     <fcub:ADDRLN4>${escapeXml((data.houseNumber || 'NO').toUpperCase())}</fcub:ADDRLN4>
                     <fcub:COUNTRY>ET</fcub:COUNTRY>
                     <fcub:SNAME>${escapeXml(shortName.substring(0, 25))}</fcub:SNAME>
-                    <fcub:SSN>${escapeXml(ssn)}</fcub:SSN>
                     <fcub:NLTY>ET</fcub:NLTY>
                     <fcub:CCATEG>INDI</fcub:CCATEG>
                     <fcub:FULLNAME>${escapeXml(data.fullName.toUpperCase())}</fcub:FULLNAME>
