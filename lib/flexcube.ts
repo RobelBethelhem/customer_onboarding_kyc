@@ -377,14 +377,12 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
     phoneFormatted = `+251${phoneFormatted}`;
   }
 
-  // Title — FYDA_USR accepts ATO (matching working Fayda XML)
-  const title = data.gender === 'F' ? 'W/RO' : 'ATO';
+  // TITLE removed — ATO/MR/W/RO all rejected on branch 164 (works on branch 349 only)
 
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
   console.log(`  NATIONID: "${data.uin}" → "${nationId}"`);
   console.log(`  PHONE: "${data.phone}" → "${phoneFormatted}"`);
-  console.log(`  TITLE: "${title}"`);
   console.log(`  OCCUPATION UDF: "${data.occupation}" → "${fcOccupation}"`);
   console.log(`  INDUSTRY UDF: "${data.industry}" → "${fcIndustry}"`);
   console.log(`  PROMOTION_TYPE UDF: "${data.promotionType}" → "${fcPromotion}"`);
@@ -437,7 +435,6 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:LANG>ENG</fcub:LANG>
                         <fcub:MINOR>N</fcub:MINOR>
                         <fcub:SAME_CORR_ADDR>Y</fcub:SAME_CORR_ADDR>
-                        <fcub:TITLE>${title}</fcub:TITLE>
                         <fcub:PAISSUED>N</fcub:PAISSUED>
                         <fcub:MOTHERMAIDN_NAME>${escapeXml((data.motherMaidenName || '').toUpperCase())}</fcub:MOTHERMAIDN_NAME>
                     </fcub:Custpersonal>
