@@ -71,6 +71,10 @@ export interface ICustomer extends Document {
   currencyRedemptionPurpose?: string; // Currency redemption purpose (default: 'Y')
   sanctionListStatus?: string;       // Is in sanction list (default: 'N')
   taxIdentity?: string;              // Tax Identity Number (TIN)
+  politicallyExposedPerson?: string; // PEP status (default: 'NO')
+  customerType?: string;             // Customer type (default: 'Individual')
+  idType?: string;                   // ID type (default: 'National ID')
+  nationality?: string;              // Nationality (default: 'ETHIOPIA')
 }
 
 // Default placeholder photo
@@ -160,6 +164,10 @@ const CustomerSchema = new Schema<ICustomer>({
   currencyRedemptionPurpose: { type: String, default: 'Y' },
   sanctionListStatus: { type: String, default: 'N' },
   taxIdentity: { type: String, default: '' },
+  politicallyExposedPerson: { type: String, default: 'NO' },
+  customerType: { type: String, default: 'Individual' },
+  idType: { type: String, default: 'National ID' },
+  nationality: { type: String, default: 'ETHIOPIA' },
 }, {
   timestamps: true,
 });

@@ -236,6 +236,10 @@ export async function POST(request: Request) {
       currencyRedemptionPurpose: body.currencyRedemptionPurpose || 'Y',
       sanctionListStatus: body.sanctionListStatus || 'N',
       taxIdentity: body.taxIdentity || body.tin || '',
+      politicallyExposedPerson: body.politicallyExposedPerson || 'NO',
+      customerType: body.customerType || 'Individual',
+      idType: body.idType || 'National ID',
+      nationality: body.nationality || 'ETHIOPIA',
       // Marriage certificate photo (only for married customers)
       marriageCertificatePhoto: body.marriageCertificatePhoto,
       // Photos - Fayda ID photo and selfie

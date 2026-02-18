@@ -242,6 +242,10 @@ export default function CustomerDetailPage() {
       ['Lead RM', customer.leadRm || 'NA'],
       ['Currency Redemption Purpose', customer.currencyRedemptionPurpose || 'Y'],
       ['Sanction List Status', customer.sanctionListStatus || 'N'],
+      ['Politically Exposed Person', customer.politicallyExposedPerson || 'NO'],
+      ['Customer Type', customer.customerType || 'Individual'],
+      ['ID Type', customer.idType || 'National ID'],
+      ['Nationality', customer.nationality || 'ETHIOPIA'],
       ['Created At', formatDate(customer.createdAt)],
       ['Approved At', formatDate(customer.approvedAt)],
       ['Approved By', customer.approvedBy || '-'],
@@ -845,6 +849,10 @@ export default function CustomerDetailPage() {
               <InfoItem label="Lead RM" value={customer.leadRm || 'NA'} />
               <InfoItem label="Currency Redemption Purpose" value={customer.currencyRedemptionPurpose === 'Y' ? 'Yes' : customer.currencyRedemptionPurpose === 'N' ? 'No' : (customer.currencyRedemptionPurpose || 'Yes')} />
               <InfoItem label="Sanction List Status" value={customer.sanctionListStatus === 'N' ? 'Not in Sanction List' : customer.sanctionListStatus === 'Y' ? 'In Sanction List' : (customer.sanctionListStatus || 'Not in Sanction List')} />
+              <InfoItem label="Politically Exposed Person" value={customer.politicallyExposedPerson || 'NO'} />
+              <InfoItem label="Customer Type" value={customer.customerType || 'Individual'} />
+              <InfoItem label="ID Type" value={customer.idType || 'National ID'} />
+              <InfoItem label="Nationality" value={customer.nationality || 'ETHIOPIA'} />
             </div>
           </div>
 

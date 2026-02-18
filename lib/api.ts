@@ -70,6 +70,10 @@ export interface Customer {
   currencyRedemptionPurpose?: string;
   sanctionListStatus?: string;
   taxIdentity?: string;
+  politicallyExposedPerson?: string;
+  customerType?: string;
+  idType?: string;
+  nationality?: string;
 }
 
 export interface CustomerResponse {
