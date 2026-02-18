@@ -358,15 +358,17 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
   // Annual income as decimal
   const annualIncome = (data.annualIncome || 0).toFixed(2);
 
-  // Today's date for passport issue, +100 years for expiry (matching Fayda pattern)
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-  const expiryDate = new Date(today);
+  // Passport issue date = yesterday (avoid timezone issues with FlexCube server)
+  // Expiry = +100 years (matching Fayda pattern)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const pptIssDt = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
+  const expiryDate = new Date(yesterday);
   expiryDate.setFullYear(expiryDate.getFullYear() + 100);
-  const expiryStr = expiryDate.toISOString().split('T')[0];
+  const pptExpDt = expiryDate.toISOString().split('T')[0];
 
-  // Title based on gender
-  const title = data.gender === 'F' ? 'W/RO' : 'ATO';
+  // Title based on gender — use MR/MRS (ATO not accepted by IB_SER user)
+  const title = data.gender === 'F' ? 'MRS' : 'MR';
 
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
@@ -416,8 +418,8 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:GENDR>${data.gender === 'F' ? 'F' : 'M'}</fcub:GENDR>
                         <fcub:NATIONID>${escapeXml(data.uin)}</fcub:NATIONID>
                         <fcub:PPTNO>0000000000</fcub:PPTNO>
-                        <fcub:PPTISSDT>${todayStr}</fcub:PPTISSDT>
-                        <fcub:PPTEXPDT>${expiryStr}</fcub:PPTEXPDT>
+                        <fcub:PPTISSDT>${pptIssDt}</fcub:PPTISSDT>
+                        <fcub:PPTEXPDT>${pptExpDt}</fcub:PPTEXPDT>
                         <fcub:EMAILID>${escapeXml((data.email || '').toLowerCase())}</fcub:EMAILID>
                         <fcub:MOBNUM>${escapeXml(data.phone)}</fcub:MOBNUM>
                         <fcub:LANG>ENG</fcub:LANG>
