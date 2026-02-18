@@ -948,6 +948,13 @@ export async function createCustomerAndAccount(
   }
 
   // ── Step 2: Create Account using CIF ──
+  // FYDA_USR doesn't have CreateCustAcc rights (GW-ROUT0008), so use IB_SER for account creation
+  const accountConfig: FlexCubeConfig = {
+    ...config,
+    userId: 'IB_SER',
+    source: 'EXTFYDA',
+  };
+  console.log(`[FlexCube] Switching to IB_SER for account creation (FYDA_USR lacks CreateCustAcc rights)`);
   const accountClass = getAccountClass(customerData.accountTypeId);
   const accountResult = await createAccount({
     cifNumber: cifResult.cifNumber,
@@ -955,7 +962,7 @@ export async function createCustomerAndAccount(
     branchCode: customerData.branchCode || config.defaultBranch,
     accountClass,
     currency: 'ETB',
-  }, config);
+  }, accountConfig);
 
   if (!accountResult.success || !accountResult.accountNumber) {
     return {
