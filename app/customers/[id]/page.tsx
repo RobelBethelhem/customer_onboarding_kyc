@@ -6,7 +6,8 @@ import Link from 'next/link';
 import {
   ArrowLeft, User, MapPin, Briefcase, CreditCard, Calendar,
   Phone, Mail, CheckCircle2, XCircle,
-  Camera, Eye, AlertTriangle, Download, Printer, Loader2, FileText, Video
+  Camera, Eye, AlertTriangle, Download, Printer, Loader2, FileText, Video,
+  Shield, Megaphone
 } from 'lucide-react';
 import {
   fetchCustomer, approveCustomer, rejectCustomer,
@@ -17,38 +18,60 @@ import { toast } from 'sonner';
 
 function getOccupationLabel(code: string, otherValue?: string): string {
   const labels: Record<string, string> = {
-    'EMP': 'Employed', 'SELF': 'Self-Employed', 'GOV': 'Government Employee',
-    'STU': 'Student', 'RET': 'Retired', 'O': 'Other',
+    'PSE': 'Private Sector Employed', 'GSE': 'Government Sector Employed',
+    'SE': 'Self-Employed', 'STUD': 'Student', 'RET': 'Retired',
+    'HW': 'Housewife', 'DIP': 'Diplomat', 'NGOE': 'NGO Employed',
+    'ROE': 'Religious Org Employed', 'UNEMP': 'Unemployed', 'O': 'Other',
+    // Legacy codes
+    'EMP': 'Employed', 'SELF': 'Self-Employed', 'GOV': 'Government Employee', 'STU': 'Student',
   };
-  // If code is 'O' (Other) and there's a specified value, show it
-  if (code === 'O' && otherValue && otherValue.trim()) {
-    return otherValue;
-  }
+  if (code === 'O' && otherValue && otherValue.trim()) return otherValue;
   return labels[code] || code;
 }
 
 function getIndustryLabel(code: string, otherValue?: string): string {
   const labels: Record<string, string> = {
+    'BN': 'Banking', 'CONS': 'Construction', 'AFF': 'Agriculture & Fishing',
+    'FM': 'Food Manufacturing', 'ES': 'Educational Services', 'HS': 'Health Services',
+    'INS': 'Insurance', 'CS': 'Computer Systems & IT', 'SOFT': 'Software',
+    'TELE': 'Telecommunications', 'HO': 'Hotels & Accommodations',
+    'FSD': 'Food Services', 'WHL': 'Wholesale Trade', 'AD': 'Automobile Dealers',
+    'AT': 'Air Transportation', 'TRUCK': 'Truck Transportation', 'MIN': 'Mining',
+    'OG': 'Oil & Gas', 'UTI': 'Utilities', 'SEC': 'Securities & Investments',
+    'CM': 'Chemical Manufacturing', 'PM': 'Pharmaceutical', 'AM': 'Apparel Manufacturing',
+    'SM': 'Steel Manufacturing', 'MM': 'Machinery Manufacturing',
+    'CEP': 'Computer & Electronics', 'APM': 'Aerospace Manufacturing',
+    'MVP': 'Motor Vehicle Manufacturing', 'TEX': 'Textile', 'GS': 'Grocery Stores',
+    'CAGM': 'Clothing & Merchandise', 'APR': 'Advertising & PR',
+    'MST': 'Management Consulting', 'SR': 'Scientific Research',
+    'EMPS': 'Employment Services', 'AER': 'Arts & Entertainment',
+    'BRD': 'Broadcasting', 'PUB': 'Publishing', 'PRN': 'Printing',
+    'MPV': 'Motion Picture & Video', 'INTRT': 'Internet & Data Processing',
+    'CD': 'Child Day Care', 'SAE': 'Social Assistance', 'AGC': 'Civic Organizations',
+    'FG': 'Federal Government', 'SLG': 'State & Local Government',
+    'NA': 'Not Applicable', 'O': 'Others',
+    // Legacy codes
     'AGR': 'Agriculture', 'MAN': 'Manufacturing', 'TRD': 'Trade/Commerce',
     'SER': 'Services', 'IT': 'Information Technology', 'FIN': 'Finance',
-    'HLT': 'Healthcare', 'EDU': 'Education', 'O': 'Other',
+    'HLT': 'Healthcare', 'EDU': 'Education',
   };
-  // If code is 'O' (Other) and there's a specified value, show it
-  if (code === 'O' && otherValue && otherValue.trim()) {
-    return otherValue;
-  }
+  if (code === 'O' && otherValue && otherValue.trim()) return otherValue;
   return labels[code] || code;
 }
 
 function getWealthSourceLabel(code: string, otherValue?: string): string {
   const labels: Record<string, string> = {
-    'SAL': 'Salary', 'BUS': 'Business Income', 'INV': 'Investments',
-    'INH': 'Inheritance', 'REM': 'Remittance', 'O': 'Other',
+    'SAL': 'Salary', 'SB': 'Small Business', 'PS': 'Personal Savings',
+    'INV': 'Investment / Dividend', 'INH': 'Inheritance', 'PW': 'Personal Wealth',
+    'RET': 'Retirement', 'SOA': 'Sale of Asset', 'GF': 'Gift',
+    'LP': 'Loan Proceeds', 'LS': 'Legal Settlement', 'MAT': 'Maturity of Life Policy',
+    'D': 'Donation', 'AL': 'Alimony', 'SM': 'Subsistence/Maintenance',
+    'SH': 'Shopkeeper', 'T': 'Trust', 'G': 'Gambling', 'L': 'Lottery',
+    'NC': 'Not Clear', 'O': 'Others',
+    // Legacy codes
+    'BUS': 'Business Income', 'REM': 'Remittance',
   };
-  // If code is 'O' (Other) and there's a specified value, show it
-  if (code === 'O' && otherValue && otherValue.trim()) {
-    return otherValue;
-  }
+  if (code === 'O' && otherValue && otherValue.trim()) return otherValue;
   return labels[code] || code;
 }
 
@@ -57,6 +80,26 @@ function getMaritalStatusLabel(code: string): string {
     'S': 'Single', 'M': 'Married', 'D': 'Divorced', 'W': 'Widowed',
   };
   return labels[code] || code;
+}
+
+function getPromotionTypeLabel(code: string): string {
+  const labels: Record<string, string> = {
+    'Walk in customer': 'Walk-in Customer',
+    'FACEBOOK': 'Facebook',
+    'RADIO': 'Radio',
+    'TVAD': 'TV Advertisement',
+    'MAGAZINE': 'Magazine',
+    'Borrower': 'Borrower',
+    'Payroll Account': 'Payroll Account',
+    'Provident Fund Accounts': 'Provident Fund',
+    'Share holder': 'Shareholder',
+    'Zemen bank Staff account': 'Staff Account',
+    'Amendments on existing': 'Amendment on Existing',
+    'MAPP': 'Mobile App',
+    'WEB': 'Web',
+    'WHATSAPP': 'WhatsApp',
+  };
+  return labels[code] || code || '-';
 }
 
 export default function CustomerDetailPage() {
@@ -190,6 +233,15 @@ export default function CustomerDetailPage() {
       ['Initial Deposit', customer.initialDeposit?.toLocaleString() || '-'],
       ['Marital Status', getMaritalStatusLabel(customer.maritalStatus || '')],
       ['Mother Maiden Name', customer.motherMaidenName || '-'],
+      ['Promotion Type', getPromotionTypeLabel(customer.promotionType || '')],
+      ['Tax Identity (TIN)', customer.taxIdentity || '-'],
+      ['Customer Risk Rating', customer.customerRiskRating || 'LOW'],
+      ['Customer Segmentation', customer.customerSegmentation || 'RETAIL CUSTOMER'],
+      ['Maintenance Fee Waived', customer.maintFeeWaived || 'Y'],
+      ['SLA Enabled', customer.slaEnable || 'N'],
+      ['Lead RM', customer.leadRm || 'NA'],
+      ['Currency Redemption Purpose', customer.currencyRedemptionPurpose || 'Y'],
+      ['Sanction List Status', customer.sanctionListStatus || 'N'],
       ['Created At', formatDate(customer.createdAt)],
       ['Approved At', formatDate(customer.approvedAt)],
       ['Approved By', customer.approvedBy || '-'],
@@ -768,6 +820,31 @@ export default function CustomerDetailPage() {
               <InfoItem label="Institution" value={getIndustryLabel(customer.industry, customer.otherIndustry)} />
               <InfoItem label="Source of Income" value={getWealthSourceLabel(customer.wealthSource, customer.otherWealthSource)} />
               <InfoItem label="Annual Income" value={`ETB ${customer.annualIncome?.toLocaleString() || 0}`} />
+            </div>
+          </div>
+
+          {/* KYC / CIF Details */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-5 h-5 text-rose-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">KYC / CIF Details</h2>
+            </div>
+
+            <div className="space-y-4">
+              <InfoItem label="Promotion Type" value={getPromotionTypeLabel(customer.promotionType || '')} icon={<Megaphone className="w-4 h-4" />} />
+              <InfoItem label="Tax Identity (TIN)" value={customer.taxIdentity || '-'} />
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">CIF Default Values</p>
+              </div>
+              <InfoItem label="Customer Risk Rating" value={customer.customerRiskRating || 'LOW'} />
+              <InfoItem label="Customer Segmentation" value={customer.customerSegmentation || 'RETAIL CUSTOMER'} />
+              <InfoItem label="Maintenance Fee Waived" value={customer.maintFeeWaived === 'Y' ? 'Yes' : customer.maintFeeWaived === 'N' ? 'No' : (customer.maintFeeWaived || 'Yes')} />
+              <InfoItem label="SLA Enabled" value={customer.slaEnable === 'Y' ? 'Yes' : customer.slaEnable === 'N' ? 'No' : (customer.slaEnable || 'No')} />
+              <InfoItem label="Lead RM" value={customer.leadRm || 'NA'} />
+              <InfoItem label="Currency Redemption Purpose" value={customer.currencyRedemptionPurpose === 'Y' ? 'Yes' : customer.currencyRedemptionPurpose === 'N' ? 'No' : (customer.currencyRedemptionPurpose || 'Yes')} />
+              <InfoItem label="Sanction List Status" value={customer.sanctionListStatus === 'N' ? 'Not in Sanction List' : customer.sanctionListStatus === 'Y' ? 'In Sanction List' : (customer.sanctionListStatus || 'Not in Sanction List')} />
             </div>
           </div>
 

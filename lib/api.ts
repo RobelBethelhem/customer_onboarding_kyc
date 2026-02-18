@@ -60,6 +60,16 @@ export interface Customer {
   rejectionReason?: string;
   approvedBy?: string;
   rejectedBy?: string;
+  // CIF creation fields
+  promotionType?: string;
+  customerRiskRating?: string;
+  customerSegmentation?: string;
+  maintFeeWaived?: string;
+  slaEnable?: string;
+  leadRm?: string;
+  currencyRedemptionPurpose?: string;
+  sanctionListStatus?: string;
+  taxIdentity?: string;
 }
 
 export interface CustomerResponse {

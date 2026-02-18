@@ -222,10 +222,20 @@ export async function POST(request: Request) {
       otherIndustry: body.otherIndustry,
       wealthSource: body.wealthSource,
       otherWealthSource: body.otherWealthSource,
-      annualIncome: body.annualIncome,
+      annualIncome: body.annualIncome || body.monthlyIncome || 0,
       initialDeposit: body.initialDeposit,
       motherMaidenName: body.motherMaidenName,
       maritalStatus: body.maritalStatus,
+      // CIF creation fields — user-entered + system defaults
+      promotionType: body.promotionType || 'Walk in customer',
+      customerRiskRating: body.customerRiskRating || 'LOW',
+      customerSegmentation: body.customerSegmentation || 'RETAIL CUSTOMER',
+      maintFeeWaived: body.maintFeeWaived || 'Y',
+      slaEnable: body.slaEnable || 'N',
+      leadRm: body.leadRm || 'NA',
+      currencyRedemptionPurpose: body.currencyRedemptionPurpose || 'Y',
+      sanctionListStatus: body.sanctionListStatus || 'N',
+      taxIdentity: body.taxIdentity || body.tin || '',
       // Marriage certificate photo (only for married customers)
       marriageCertificatePhoto: body.marriageCertificatePhoto,
       // Photos - Fayda ID photo and selfie

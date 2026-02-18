@@ -61,6 +61,16 @@ export interface ICustomer extends Document {
   rejectionReason?: string;
   approvedBy?: string;
   rejectedBy?: string;
+  // CIF creation fields — sent to FlexCube and stored for reference
+  promotionType?: string;            // How customer heard about us (e.g., 'Walk in customer', 'FACEBOOK')
+  customerRiskRating?: string;       // KYC risk rating (default: 'LOW')
+  customerSegmentation?: string;     // Customer segment (default: 'RETAIL CUSTOMER')
+  maintFeeWaived?: string;           // Maintenance fee waived (default: 'Y')
+  slaEnable?: string;                // SLA enabled (default: 'N')
+  leadRm?: string;                   // Lead RM (default: 'NA')
+  currencyRedemptionPurpose?: string; // Currency redemption purpose (default: 'Y')
+  sanctionListStatus?: string;       // Is in sanction list (default: 'N')
+  taxIdentity?: string;              // Tax Identity Number (TIN)
 }
 
 // Default placeholder photo
@@ -140,6 +150,16 @@ const CustomerSchema = new Schema<ICustomer>({
   rejectionReason: { type: String },
   approvedBy: { type: String },
   rejectedBy: { type: String },
+  // CIF creation fields — sent to FlexCube and stored for reference
+  promotionType: { type: String, default: '' },
+  customerRiskRating: { type: String, default: 'LOW' },
+  customerSegmentation: { type: String, default: 'RETAIL CUSTOMER' },
+  maintFeeWaived: { type: String, default: 'Y' },
+  slaEnable: { type: String, default: 'N' },
+  leadRm: { type: String, default: 'NA' },
+  currencyRedemptionPurpose: { type: String, default: 'Y' },
+  sanctionListStatus: { type: String, default: 'N' },
+  taxIdentity: { type: String, default: '' },
 }, {
   timestamps: true,
 });

@@ -114,7 +114,7 @@ export async function PATCH(
           annualIncome: customer.annualIncome || 0,
           branchCode: customer.branchCode || flexcubeConfig.defaultBranch,
           accountTypeId: customer.accountTypeId || 'SPRI',
-          promotionType: customer.promotionType || 'MAPP',
+          promotionType: customer.promotionType || 'Walk in customer',
           customerSegmentation: customer.customerSegmentation || 'RETAIL CUSTOMER',
         }, flexcubeConfig);
 

@@ -247,27 +247,21 @@ function formatDOB(dob: string): string {
 
 /**
  * Format Fayda UIN for FlexCube SSN field
- * FlexCube expects: nnn-nn-nnnn (e.g., "462-13-0284")
- * Fayda UIN is 16 digits (e.g., "4621302843750872")
- * We take first 9 digits and format as nnn-nn-nnnn
+ *
+ * FlexCube SSN validation reports two patterns:
+ *   FT-SSN002: nnn-nn-nnnn  (all numeric)
+ *   ST-SSN001: ann-an-naaa  (a=alpha, n=numeric)
+ *
+ * The actual FlexCube SSN field is flexible — we send the full Fayda UIN as-is.
+ * Fayda UIN is 16 digits (e.g., "4621302843750872") — just pass through directly.
+ * If SSN fails, FlexCube will still create the CIF but without SSN.
  */
 function formatSSN(uin: string): string {
   if (!uin) return '';
 
-  // Remove any existing dashes/spaces
-  const digits = uin.replace(/[\s-]/g, '');
-
-  // If already in nnn-nn-nnnn format, return as-is
-  if (/^\d{3}-\d{2}-\d{4}$/.test(uin)) return uin;
-
-  // Take first 9 digits and format as nnn-nn-nnnn
-  if (digits.length >= 9) {
-    return `${digits.substring(0, 3)}-${digits.substring(3, 5)}-${digits.substring(5, 9)}`;
-  }
-
-  // Pad if less than 9 digits
-  const padded = digits.padEnd(9, '0');
-  return `${padded.substring(0, 3)}-${padded.substring(3, 5)}-${padded.substring(5, 9)}`;
+  // Send the full Fayda UIN as-is — do NOT format or truncate
+  // FlexCube should accept the raw identifier
+  return uin.trim();
 }
 
 // ─── SOAP Envelope Builders ───────────────────────────────────────────────────
