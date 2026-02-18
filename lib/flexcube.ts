@@ -258,9 +258,9 @@ function formatDOB(dob: string): string {
  * Mapping: 0→A, 1→B, 2→C, 3→D, 4→E, 5→F, 6→G, 7→H, 8→I, 9→J
  *
  * Example: UIN "4621302843750872"
- *   digits used: 4,6,2,1,3,0,2,8,4,3
- *   pattern:     a,n,n,-,a,n,-,n,a,a,a
- *   result:      E62-B3-0CIA → "E62-B3-0CIA"
+ *   digits used (offset 7): 8,4,3,7,5,0,8,7,2
+ *   pattern:                 a,n,n,-,a,n,-,n,a,a,a
+ *   result:                  I43-H5-0IHC
  */
 function formatSSN(uin: string): string {
   if (!uin) return '';
@@ -291,17 +291,21 @@ function formatSSNFromDigits(digits: string): string {
     return map[d] || 'A';
   };
 
-  // Pattern: ann-an-naaa  (positions from UIN digits: 0,1,2 - 3,4 - 5,6,7,8,9)
-  // a=letter, n=digit
-  const a1 = digitToLetter(digits[0]);  // a
-  const n1 = digits[1];                  // n
-  const n2 = digits[2];                  // n
-  const a2 = digitToLetter(digits[3]);  // a
-  const n3 = digits[4];                  // n
-  const n4 = digits[5];                  // n
-  const a3 = digitToLetter(digits[6]);  // a
-  const a4 = digitToLetter(digits[7]);  // a
-  const a5 = digitToLetter(digits[8]);  // a
+  // Use digits from later part of UIN for better uniqueness
+  // For 16-digit Fayda UIN, use digits 7-15 (the last 9 digits)
+  // This avoids collisions from previous attempts that used digits 0-8
+  const offset = digits.length >= 16 ? 7 : 0;
+
+  // Pattern: ann-an-naaa  (a=letter, n=digit)
+  const a1 = digitToLetter(digits[offset + 0]);  // a
+  const n1 = digits[offset + 1];                  // n
+  const n2 = digits[offset + 2];                  // n
+  const a2 = digitToLetter(digits[offset + 3]);  // a
+  const n3 = digits[offset + 4];                  // n
+  const n4 = digits[offset + 5];                  // n
+  const a3 = digitToLetter(digits[offset + 6]);  // a
+  const a4 = digitToLetter(digits[offset + 7]);  // a
+  const a5 = digitToLetter(digits[offset + 8]);  // a
 
   // Result: ann-an-naaa
   return `${a1}${n1}${n2}-${a2}${n3}-${n4}${a3}${a4}${a5}`;
