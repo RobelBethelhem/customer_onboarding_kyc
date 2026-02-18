@@ -117,9 +117,9 @@ const branches = [
 ];
 
 const regions = ['Addis Ababa', 'Oromia', 'Amhara', 'SNNPR', 'Tigray'];
-const occupations = ['EMP', 'SELF', 'GOV', 'STU', 'RET', 'O'];
-const industries = ['AGR', 'MAN', 'TRD', 'SER', 'IT', 'FIN', 'HLT', 'EDU', 'O'];
-const wealthSources = ['SAL', 'BUS', 'INV', 'INH', 'REM', 'O'];
+const occupations = ['PSE', 'GSE', 'SE', 'STUD', 'RET', 'HW', 'DIP', 'NGOE', 'ROE', 'UNEMP', 'O'];
+const industries = ['BN', 'CONS', 'AFF', 'FM', 'ES', 'HS', 'INS', 'CS', 'SOFT', 'TELE', 'HO', 'WHL', 'NA', 'O'];
+const wealthSources = ['SAL', 'SB', 'PS', 'INV', 'INH', 'PW', 'RET', 'SOA', 'GF', 'O'];
 const maritalStatuses = ['S', 'M', 'D', 'W'];
 
 const statuses: Customer['status'][] = ['pending', 'verified', 'approved', 'rejected', 'auto_approved'];
@@ -256,39 +256,66 @@ export const summaryStats = {
 // Helper functions
 export function getOccupationLabel(code: string): string {
   const labels: Record<string, string> = {
+    'PSE': 'Private Sector Employed',
+    'GSE': 'Government Sector Employed',
+    'SE': 'Self-Employed',
+    'STUD': 'Student',
+    'RET': 'Retired',
+    'HW': 'Housewife',
+    'DIP': 'Diplomat',
+    'NGOE': 'NGO Employed',
+    'ROE': 'Religious Org Employed',
+    'UNEMP': 'Unemployed',
+    'O': 'Other',
+    // Legacy codes
     'EMP': 'Employed',
     'SELF': 'Self-Employed',
     'GOV': 'Government Employee',
     'STU': 'Student',
-    'RET': 'Retired',
-    'O': 'Other',
   };
   return labels[code] || code;
 }
 
 export function getIndustryLabel(code: string): string {
   const labels: Record<string, string> = {
-    'AGR': 'Agriculture',
-    'MAN': 'Manufacturing',
-    'TRD': 'Trade/Commerce',
-    'SER': 'Services',
-    'IT': 'Information Technology',
-    'FIN': 'Finance',
-    'HLT': 'Healthcare',
-    'EDU': 'Education',
-    'O': 'Other',
+    'BN': 'Banking', 'CONS': 'Construction', 'AFF': 'Agriculture & Fishing',
+    'FM': 'Food Manufacturing', 'ES': 'Educational Services', 'HS': 'Health Services',
+    'INS': 'Insurance', 'CS': 'Computer Systems & IT', 'SOFT': 'Software',
+    'TELE': 'Telecommunications', 'HO': 'Hotels & Accommodations',
+    'FSD': 'Food Services', 'WHL': 'Wholesale Trade', 'AD': 'Automobile Dealers',
+    'AT': 'Air Transportation', 'TRUCK': 'Truck Transportation', 'MIN': 'Mining',
+    'OG': 'Oil & Gas', 'UTI': 'Utilities', 'SEC': 'Securities & Investments',
+    'CM': 'Chemical Manufacturing', 'PM': 'Pharmaceutical', 'AM': 'Apparel Manufacturing',
+    'SM': 'Steel Manufacturing', 'MM': 'Machinery Manufacturing',
+    'CEP': 'Computer & Electronics', 'APM': 'Aerospace Manufacturing',
+    'MVP': 'Motor Vehicle Manufacturing', 'TEX': 'Textile', 'GS': 'Grocery Stores',
+    'CAGM': 'Clothing & Merchandise', 'APR': 'Advertising & PR',
+    'MST': 'Management Consulting', 'SR': 'Scientific Research',
+    'EMPS': 'Employment Services', 'AER': 'Arts & Entertainment',
+    'BRD': 'Broadcasting', 'PUB': 'Publishing', 'PRN': 'Printing',
+    'MPV': 'Motion Picture & Video', 'INTRT': 'Internet & Data Processing',
+    'CD': 'Child Day Care', 'SAE': 'Social Assistance', 'AGC': 'Civic Organizations',
+    'FG': 'Federal Government', 'SLG': 'State & Local Government',
+    'NA': 'Not Applicable', 'O': 'Others',
+    // Legacy codes
+    'AGR': 'Agriculture', 'MAN': 'Manufacturing', 'TRD': 'Trade/Commerce',
+    'SER': 'Services', 'IT': 'Information Technology', 'FIN': 'Finance',
+    'HLT': 'Healthcare', 'EDU': 'Education',
   };
   return labels[code] || code;
 }
 
 export function getWealthSourceLabel(code: string): string {
   const labels: Record<string, string> = {
-    'SAL': 'Salary',
-    'BUS': 'Business Income',
-    'INV': 'Investments',
-    'INH': 'Inheritance',
-    'REM': 'Remittance',
-    'O': 'Other',
+    'SAL': 'Salary', 'SB': 'Small Business', 'PS': 'Personal Savings',
+    'INV': 'Investment / Dividend', 'INH': 'Inheritance', 'PW': 'Personal Wealth',
+    'RET': 'Retirement', 'SOA': 'Sale of Asset', 'GF': 'Gift',
+    'LP': 'Loan Proceeds', 'LS': 'Legal Settlement', 'MAT': 'Maturity of Life Policy',
+    'D': 'Donation', 'AL': 'Alimony', 'SM': 'Subsistence/Maintenance',
+    'SH': 'Shopkeeper', 'T': 'Trust', 'G': 'Gambling', 'L': 'Lottery',
+    'NC': 'Not Clear', 'O': 'Others',
+    // Legacy codes
+    'BUS': 'Business Income', 'REM': 'Remittance',
   };
   return labels[code] || code;
 }

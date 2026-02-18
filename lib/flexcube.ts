@@ -120,62 +120,90 @@ export function getAccountClass(accountTypeId: string): string {
 }
 
 // ─── FlexCube LOV (List of Values) Mappings ──────────────────────────────────
-// Our app uses short codes (EMP, IT, SAL, MAPP etc.) but FlexCube has its own
-// LOV values. These maps translate app codes → FlexCube-accepted values.
-// Update these if FlexCube LOV values change.
+// App dropdown values now match FlexCube LOV directly (from FCUBSPRD.UDTM_LOV).
+// These maps handle: (1) direct pass-through for matching values,
+// (2) backward compatibility for old data with legacy codes (EMP, IT, etc.),
+// (3) safe defaults for any unrecognized values.
 
 /**
- * Map app employment status → FlexCube EMPSTAT
- * FlexCube error: "Invalid Value E for Field Employment"
- * FlexCube accepts: U (Unemployed/Unknown), S (Self-Employed), etc.
- * Using 'U' as safe default since the original sample XML used 'U'
+ * Map occupation code → FlexCube EMPSTAT field
+ * EMPSTAT is a separate field from UDF OCCUPATION — it goes in Custprof.
  */
 const FLEXCUBE_EMPSTAT_MAP: Record<string, string> = {
-  'EMP': 'U',    // Employed → U (FlexCube doesn't accept 'E')
-  'SELF': 'S',   // Self-Employed → S
-  'GOV': 'U',    // Government → U
-  'STU': 'U',    // Student → U
+  'PSE': 'U',    // Private Sector → Employed (U=Unknown/General)
+  'GSE': 'U',    // Government Sector → Employed
+  'SE': 'S',     // Self-Employed → S
+  'STUD': 'U',   // Student → U
   'RET': 'R',    // Retired → R
+  'HW': 'U',     // Housewife → U
+  'DIP': 'U',    // Diplomat → U
+  'NGOE': 'U',   // NGO Employed → U
+  'ROE': 'U',    // Religious Org → U
+  'UNEMP': 'U',  // Unemployed → U
   'O': 'U',      // Other → U
+  // Legacy codes (backward compatibility for old mobile app data)
+  'EMP': 'U',
+  'SELF': 'S',
+  'GOV': 'U',
+  'STU': 'U',
 };
 
 /**
- * Map app occupation codes → FlexCube UDF OCCUPATION LOV
- * FlexCube error: "For field OCCUPATION, EMP value is not available in LOV"
+ * Map occupation code → FlexCube UDF OCCUPATION LOV
+ * Values: DIP, GSE, HW, NGOE, O, PSE, RET, ROE, SE, STUD, UNEMP
  */
 const FLEXCUBE_OCCUPATION_MAP: Record<string, string> = {
-  'EMP': 'O',       // Employed → Other
-  'SELF': 'O',      // Self-Employed → Other
-  'GOV': 'O',       // Government → Other
-  'STU': 'O',       // Student → Other
-  'RET': 'O',       // Retired → Other
-  'O': 'O',         // Other → Other
+  // Direct FlexCube LOV values (pass-through)
+  'PSE': 'PSE', 'GSE': 'GSE', 'SE': 'SE', 'STUD': 'STUD', 'RET': 'RET',
+  'HW': 'HW', 'DIP': 'DIP', 'NGOE': 'NGOE', 'ROE': 'ROE', 'UNEMP': 'UNEMP', 'O': 'O',
+  // Legacy codes → closest FlexCube match
+  'EMP': 'PSE', 'SELF': 'SE', 'GOV': 'GSE', 'STU': 'STUD',
 };
 
 /**
- * Map app industry codes → FlexCube UDF INDUSTRY LOV
- * FlexCube error: "For field INDUSTRY, IT value is not available in LOV"
+ * Map industry code → FlexCube UDF INDUSTRY LOV
+ * 48 values from FlexCube LOV — app dropdown now uses these directly.
  */
 const FLEXCUBE_INDUSTRY_MAP: Record<string, string> = {
-  'AGR': 'O',    // Agriculture → Other
-  'MAN': 'O',    // Manufacturing → Other
-  'TRD': 'O',    // Trade → Other
-  'SER': 'O',    // Services → Other
-  'IT': 'O',     // IT → Other
-  'FIN': 'O',    // Finance → Other
-  'HLT': 'O',    // Healthcare → Other
-  'EDU': 'O',    // Education → Other
-  'O': 'O',      // Other → Other
+  // Direct FlexCube LOV values (pass-through) — all 48
+  'AD': 'AD', 'AER': 'AER', 'AFF': 'AFF', 'AGC': 'AGC', 'AM': 'AM',
+  'APM': 'APM', 'APR': 'APR', 'AT': 'AT', 'BN': 'BN', 'BRD': 'BRD',
+  'CAGM': 'CAGM', 'CD': 'CD', 'CEP': 'CEP', 'CM': 'CM', 'CONS': 'CONS',
+  'CS': 'CS', 'EMPS': 'EMPS', 'ES': 'ES', 'FG': 'FG', 'FM': 'FM',
+  'FSD': 'FSD', 'GS': 'GS', 'HO': 'HO', 'HS': 'HS', 'INS': 'INS',
+  'INTRT': 'INTRT', 'MIN': 'MIN', 'MM': 'MM', 'MPV': 'MPV', 'MST': 'MST',
+  'MVP': 'MVP', 'NA': 'NA', 'O': 'O', 'OG': 'OG', 'PM': 'PM',
+  'PRN': 'PRN', 'PUB': 'PUB', 'SAE': 'SAE', 'SEC': 'SEC', 'SLG': 'SLG',
+  'SM': 'SM', 'SOFT': 'SOFT', 'SR': 'SR', 'TELE': 'TELE', 'TEX': 'TEX',
+  'TRUCK': 'TRUCK', 'UTI': 'UTI', 'WHL': 'WHL',
+  // Legacy codes → closest FlexCube match
+  'AGR': 'AFF', 'MAN': 'FM', 'TRD': 'WHL', 'SER': 'O', 'IT': 'CS',
+  'FIN': 'BN', 'HLT': 'HS', 'EDU': 'ES',
 };
 
 /**
- * Map app promotion type → FlexCube UDF PROMOTION_TYPE LOV
- * FlexCube error: "For field PROMOTION_TYPE, MAPP value is not available in LOV"
+ * Map promotion type → FlexCube UDF PROMOTION_TYPE LOV
+ * Values from FlexCube: Walk in customer, FACEBOOK, RADIO, TVAD, MAGAZINE,
+ * Borrower, Payroll Account, Provident Fund Accounts, Share holder,
+ * Zemen bank Staff account, Amendments on existing
  */
 const FLEXCUBE_PROMOTION_MAP: Record<string, string> = {
-  'MAPP': 'MOBILE APP',     // Mobile App
-  'WEB': 'MOBILE APP',      // Web → Mobile App (closest)
-  'WHATSAPP': 'MOBILE APP', // WhatsApp → Mobile App
+  // Direct FlexCube LOV values (pass-through)
+  'Walk in customer': 'Walk in customer',
+  'FACEBOOK': 'FACEBOOK',
+  'RADIO': 'RADIO',
+  'TVAD': 'TVAD',
+  'MAGAZINE': 'MAGAZINE',
+  'Borrower': 'Borrower',
+  'Payroll Account': 'Payroll Account',
+  'Provident Fund Accounts': 'Provident Fund Accounts',
+  'Share holder': 'Share holder',
+  'Zemen bank Staff account': 'Zemen bank Staff account',
+  'Amendments on existing': 'Amendments on existing',
+  // Legacy/channel codes
+  'MAPP': 'Walk in customer',
+  'WEB': 'Walk in customer',
+  'WHATSAPP': 'Walk in customer',
 };
 
 /**
