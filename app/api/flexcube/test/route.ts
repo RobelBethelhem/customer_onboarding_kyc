@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         <ns2:UBSCOMP>FCUBS</ns2:UBSCOMP>
         <ns2:MSGID>${msgId}</ns2:MSGID>
         <ns2:CORRELID>${correlId}</ns2:CORRELID>
-        <ns2:USERID>FYDA_USR</ns2:USERID>
+        <ns2:USERID>IB_SER</ns2:USERID>
         <ns2:BRANCH>349</ns2:BRANCH>
         <ns2:SERVICE>FCUBSCustomerService</ns2:SERVICE>
         <ns2:OPERATION>CreateCustomer</ns2:OPERATION>
