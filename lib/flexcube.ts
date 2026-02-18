@@ -248,20 +248,63 @@ function formatDOB(dob: string): string {
 /**
  * Format Fayda UIN for FlexCube SSN field
  *
- * FlexCube SSN validation reports two patterns:
- *   FT-SSN002: nnn-nn-nnnn  (all numeric)
- *   ST-SSN001: ann-an-naaa  (a=alpha, n=numeric)
+ * FlexCube SSN validation requires pattern: ann-an-naaa
+ *   a = alphabetic letter
+ *   n = numeric digit
+ *   Format: Letter Digit Digit - Letter Digit - Digit Letter Letter Letter
  *
- * The actual FlexCube SSN field is flexible — we send the full Fayda UIN as-is.
- * Fayda UIN is 16 digits (e.g., "4621302843750872") — just pass through directly.
- * If SSN fails, FlexCube will still create the CIF but without SSN.
+ * Fayda UIN is 16 digits (e.g., "4621302843750872").
+ * We derive the SSN from the UIN by converting digit→letter where 'a' positions require it.
+ * Mapping: 0→A, 1→B, 2→C, 3→D, 4→E, 5→F, 6→G, 7→H, 8→I, 9→J
+ *
+ * Example: UIN "4621302843750872"
+ *   digits used: 4,6,2,1,3,0,2,8,4,3
+ *   pattern:     a,n,n,-,a,n,-,n,a,a,a
+ *   result:      E62-B3-0CIA → "E62-B3-0CIA"
  */
 function formatSSN(uin: string): string {
   if (!uin) return '';
 
-  // Send the full Fayda UIN as-is — do NOT format or truncate
-  // FlexCube should accept the raw identifier
-  return uin.trim();
+  // Already in ann-an-naaa format? Return as-is
+  if (/^[A-Za-z]\d{2}-[A-Za-z]\d-\d[A-Za-z]{3}$/.test(uin.trim())) {
+    return uin.trim().toUpperCase();
+  }
+
+  // Extract only digits from UIN
+  const digits = uin.replace(/\D/g, '');
+  if (digits.length < 10) {
+    // Pad if too short
+    const padded = digits.padEnd(10, '0');
+    return formatSSNFromDigits(padded);
+  }
+
+  return formatSSNFromDigits(digits);
+}
+
+function formatSSNFromDigits(digits: string): string {
+  // Digit-to-letter mapping for 'a' positions
+  const digitToLetter = (d: string): string => {
+    const map: Record<string, string> = {
+      '0': 'A', '1': 'B', '2': 'C', '3': 'D', '4': 'E',
+      '5': 'F', '6': 'G', '7': 'H', '8': 'I', '9': 'J',
+    };
+    return map[d] || 'A';
+  };
+
+  // Pattern: ann-an-naaa  (positions from UIN digits: 0,1,2 - 3,4 - 5,6,7,8,9)
+  // a=letter, n=digit
+  const a1 = digitToLetter(digits[0]);  // a
+  const n1 = digits[1];                  // n
+  const n2 = digits[2];                  // n
+  const a2 = digitToLetter(digits[3]);  // a
+  const n3 = digits[4];                  // n
+  const n4 = digits[5];                  // n
+  const a3 = digitToLetter(digits[6]);  // a
+  const a4 = digitToLetter(digits[7]);  // a
+  const a5 = digitToLetter(digits[8]);  // a
+
+  // Result: ann-an-naaa
+  return `${a1}${n1}${n2}-${a2}${n3}-${n4}${a3}${a4}${a5}`;
 }
 
 // ─── SOAP Envelope Builders ───────────────────────────────────────────────────
