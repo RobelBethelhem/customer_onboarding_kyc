@@ -11,7 +11,7 @@ function getFlexCubeConfig(settings: any): FlexCubeConfig {
   return {
     customerServiceUrl: settings?.flexcubeCustomerServiceUrl || 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
     accountServiceUrl: settings?.flexcubeAccountServiceUrl || 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
-    userId: settings?.flexcubeUserId || 'IB_SER',
+    userId: settings?.flexcubeUserId || 'FYDA_USR',
     source: settings?.flexcubeSource || 'EXTFYDA',
     defaultBranch: settings?.flexcubeBranch || '103',
     timeout: settings?.flexcubeTimeout || 30000,

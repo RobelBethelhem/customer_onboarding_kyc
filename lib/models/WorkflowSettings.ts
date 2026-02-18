@@ -68,7 +68,7 @@ const WorkflowSettingsSchema = new Schema<IWorkflowSettings>({
   },
   flexcubeUserId: {
     type: String,
-    default: 'IB_SER',
+    default: 'FYDA_USR',
   },
   flexcubeSource: {
     type: String,
@@ -108,7 +108,7 @@ export const defaultWorkflowSettings: Partial<IWorkflowSettings> = {
   flexcubeEnabled: true,
   flexcubeCustomerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
   flexcubeAccountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
-  flexcubeUserId: 'IB_SER',
+  flexcubeUserId: 'FYDA_USR',
   flexcubeSource: 'EXTFYDA',
   flexcubeBranch: '103',
   flexcubeTimeout: 30000,

@@ -18,7 +18,7 @@ export interface FlexCubeConfig {
   customerServiceUrl: string;
   /** SOAP endpoint URL for FCUBSAccService (Account creation) */
   accountServiceUrl: string;
-  /** FlexCube user ID (e.g., 'IB_SER') */
+  /** FlexCube user ID (e.g., 'FYDA_USR') */
   userId: string;
   /** FlexCube source identifier (e.g., 'EXTFYDA' or 'EXTIB') */
   source: string;
@@ -90,7 +90,7 @@ export interface CreateAccountResult {
 export const defaultFlexCubeConfig: FlexCubeConfig = {
   customerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
   accountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
-  userId: 'IB_SER',
+  userId: 'FYDA_USR',
   source: 'EXTFYDA',
   defaultBranch: '103',
   timeout: 30000,

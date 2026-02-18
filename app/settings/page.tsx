@@ -34,7 +34,7 @@ const defaultWorkflowSettings: WorkflowSettings = {
   flexcubeEnabled: true,
   flexcubeCustomerServiceUrl: 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
   flexcubeAccountServiceUrl: 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
-  flexcubeUserId: 'IB_SER',
+  flexcubeUserId: 'FYDA_USR',
   flexcubeSource: 'EXTFYDA',
   flexcubeBranch: '103',
   flexcubeTimeout: 30000,
@@ -88,7 +88,7 @@ export default function SettingsPage() {
           flexcubeEnabled: data.data.flexcubeEnabled ?? true,
           flexcubeCustomerServiceUrl: data.data.flexcubeCustomerServiceUrl || 'http://10.1.1.155:7107/FCUBSCustomerService/FCUBSCustomerService',
           flexcubeAccountServiceUrl: data.data.flexcubeAccountServiceUrl || 'http://10.1.1.155:7107/FCUBSAccService/FCUBSAccService',
-          flexcubeUserId: data.data.flexcubeUserId || 'IB_SER',
+          flexcubeUserId: data.data.flexcubeUserId || 'FYDA_USR',
           flexcubeSource: data.data.flexcubeSource || 'EXTFYDA',
           flexcubeBranch: data.data.flexcubeBranch || '103',
           flexcubeTimeout: data.data.flexcubeTimeout || 30000,
@@ -520,7 +520,7 @@ export default function SettingsPage() {
                               ...workflowSettings,
                               flexcubeUserId: e.target.value,
                             })}
-                            placeholder="IB_SER"
+                            placeholder="FYDA_USR"
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
                           />
                         </div>
