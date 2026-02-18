@@ -67,12 +67,15 @@ async function callFlexCubeService(customerData: any, settings: any): Promise<{
       zone: customerData.zone || customerData.address2 || '',
       woreda: customerData.woreda || customerData.address3 || '',
       occupation: customerData.occupation || 'O',
+      otherOccupation: customerData.otherOccupation || '',
       industry: customerData.industry || 'O',
+      otherIndustry: customerData.otherIndustry || '',
       wealthSource: customerData.wealthSource || 'SAL',
+      otherWealthSource: customerData.otherWealthSource || '',
       annualIncome: customerData.annualIncome || customerData.monthlyIncome || 0,
       branchCode: customerData.branchCode || config.defaultBranch,
       accountTypeId: customerData.accountTypeId || 'SPRI',
-      promotionType: customerData.promotionType || 'MAPP',
+      promotionType: customerData.promotionType || 'Walk in customer',
       customerSegmentation: customerData.customerSegmentation || 'RETAIL CUSTOMER',
     }, config);
 

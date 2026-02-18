@@ -49,11 +49,15 @@ export interface CreateCIFRequest {
   houseNumber?: string;
   // Employment
   occupation: string;
+  otherOccupation?: string;
   industry: string;
+  otherIndustry?: string;
   wealthSource: string;
+  otherWealthSource?: string;
   annualIncome: number;
   // Account opening details
   branchCode: string;
+  accountTypeId?: string;
   promotionType?: string;
   customerSegmentation?: string;
 }
@@ -333,36 +337,44 @@ function escapeXml(str: string | undefined | null): string {
 
 /**
  * Build SOAP envelope for CreateCustomer (CIF creation)
+ * Aligned with working Fayda integration XML structure
  */
 function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeConfig): string {
   const msgId = generateMsgId();
   const correlId = generateCorrelId();
   const branch = data.branchCode || config.defaultBranch;
-  const shortName = `${data.firstName.substring(0, 5).toUpperCase()}${data.lastName.substring(0, 4).toUpperCase()}`;
+
+  // Short name: last name + UIN for uniqueness (matching Fayda format)
+  const shortName = `${data.lastName.substring(0, 6).toUpperCase()}${data.uin || msgId}`;
 
   // Map app values → FlexCube LOV values
-  const empStat = FLEXCUBE_EMPSTAT_MAP[data.occupation] || 'U';
   const fcOccupation = FLEXCUBE_OCCUPATION_MAP[data.occupation] || 'O';
   const fcIndustry = FLEXCUBE_INDUSTRY_MAP[data.industry] || 'O';
-  const fcPromotion = FLEXCUBE_PROMOTION_MAP[data.promotionType || 'MAPP'] || 'MOBILE APP';
+  const fcPromotion = FLEXCUBE_PROMOTION_MAP[data.promotionType || 'Walk in customer'] || 'Walk in customer';
 
   // Format DOB to YYYY-MM-DD
   const dob = formatDOB(data.dateOfBirth);
 
-  // Format Fayda UIN → SSN (nnn-nn-nnnn)
-  const ssn = formatSSN(data.uin);
+  // Annual income as decimal
+  const annualIncome = (data.annualIncome || 0).toFixed(2);
 
-  // Format salary (annual income / 12 for monthly)
-  const monthlySalary = Math.round((data.annualIncome || 0) / 12);
+  // Today's date for passport issue, +100 years for expiry (matching Fayda pattern)
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+  const expiryDate = new Date(today);
+  expiryDate.setFullYear(expiryDate.getFullYear() + 100);
+  const expiryStr = expiryDate.toISOString().split('T')[0];
+
+  // Title based on gender
+  const title = data.gender === 'F' ? 'W/RO' : 'ATO';
 
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
-  console.log(`  SSN: "${data.uin}" → "${ssn}"`);
-  console.log(`  EMPSTAT: "${data.occupation}" → "${empStat}"`);
+  console.log(`  NATIONID: "${data.uin}"`);
   console.log(`  OCCUPATION UDF: "${data.occupation}" → "${fcOccupation}"`);
   console.log(`  INDUSTRY UDF: "${data.industry}" → "${fcIndustry}"`);
   console.log(`  PROMOTION_TYPE UDF: "${data.promotionType}" → "${fcPromotion}"`);
-  console.log(`  Monthly Salary: ${monthlySalary} ETB`);
+  console.log(`  ANNUAL_INCOME UDF: ${annualIncome} ETB`);
 
   return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSCustomerService">
    <soapenv:Header/>
@@ -377,66 +389,57 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
             <fcub:BRANCH>${escapeXml(branch)}</fcub:BRANCH>
             <fcub:SERVICE>FCUBSCustomerService</fcub:SERVICE>
             <fcub:OPERATION>CreateCustomer</fcub:OPERATION>
-            <fcub:SOURCE_OPERATION>CreateCustomer</fcub:SOURCE_OPERATION>
             <fcub:ACTION>NEW</fcub:ACTION>
-            <fcub:MSGSTAT>SUCCESS</fcub:MSGSTAT>
          </fcub:FCUBS_HEADER>
          <fcub:FCUBS_BODY>
             <fcub:Customer-Full>
                     <fcub:CTYPE>I</fcub:CTYPE>
                     <fcub:NAME>${escapeXml(data.fullName.toUpperCase())}</fcub:NAME>
-                    <fcub:ADDRLN1>${escapeXml(data.region.toUpperCase())}</fcub:ADDRLN1>
-                    <fcub:ADDRLN2>${escapeXml(data.zone.toUpperCase())}</fcub:ADDRLN2>
+                    <fcub:ADDRLN1>${escapeXml(data.region.toUpperCase()) || 'ADDIS ABABA'}</fcub:ADDRLN1>
                     <fcub:ADDRLN3>${escapeXml(data.woreda.toUpperCase())}</fcub:ADDRLN3>
-                    <fcub:ADDRLN4>${escapeXml((data.houseNumber || '').toUpperCase())}</fcub:ADDRLN4>
+                    <fcub:ADDRLN2>${escapeXml(data.zone.toUpperCase())}</fcub:ADDRLN2>
+                    <fcub:ADDRLN4>${escapeXml((data.houseNumber || 'NO').toUpperCase())}</fcub:ADDRLN4>
                     <fcub:COUNTRY>ET</fcub:COUNTRY>
-                    <fcub:SNAME>${escapeXml(shortName)}</fcub:SNAME>
+                    <fcub:SNAME>${escapeXml(shortName.substring(0, 25))}</fcub:SNAME>
                     <fcub:NLTY>ET</fcub:NLTY>
                     <fcub:CCATEG>INDI</fcub:CCATEG>
                     <fcub:FULLNAME>${escapeXml(data.fullName.toUpperCase())}</fcub:FULLNAME>
                     <fcub:MEDIA>MAIL</fcub:MEDIA>
                     <fcub:LOC>CIF</fcub:LOC>
-                    <fcub:SSN>${escapeXml(ssn)}</fcub:SSN>
-                     <fcub:Custpersonal>
+                    <fcub:TAXIDENTITY/>
+                    <fcub:AUTHSTAT>A</fcub:AUTHSTAT>
+                    <fcub:Custpersonal>
                         <fcub:FSTNAME>${escapeXml(data.firstName.toUpperCase())}</fcub:FSTNAME>
                         <fcub:MIDNAME>${escapeXml(data.middleName.toUpperCase())}</fcub:MIDNAME>
                         <fcub:LSTNAME>${escapeXml(data.lastName.toUpperCase())}</fcub:LSTNAME>
                         <fcub:DOB>${escapeXml(dob)}</fcub:DOB>
                         <fcub:GENDR>${data.gender === 'F' ? 'F' : 'M'}</fcub:GENDR>
-                        <fcub:TELEPHNO>${escapeXml(data.phone)}</fcub:TELEPHNO>
-                        <fcub:EMAILID>${escapeXml((data.email || '').toUpperCase())}</fcub:EMAILID>
+                        <fcub:NATIONID>${escapeXml(data.uin)}</fcub:NATIONID>
+                        <fcub:PPTNO>0000000000</fcub:PPTNO>
+                        <fcub:PPTISSDT>${todayStr}</fcub:PPTISSDT>
+                        <fcub:PPTEXPDT>${expiryStr}</fcub:PPTEXPDT>
+                        <fcub:EMAILID>${escapeXml((data.email || '').toLowerCase())}</fcub:EMAILID>
                         <fcub:MOBNUM>${escapeXml(data.phone)}</fcub:MOBNUM>
-                        <fcub:MINOR>N</fcub:MINOR>
-                        <fcub:PLACEOFBIRTH>ADDIS ABABA</fcub:PLACEOFBIRTH>
-                        <fcub:MOTHERMAIDN_NAME>${escapeXml((data.motherMaidenName || '').toUpperCase())}</fcub:MOTHERMAIDN_NAME>
-                        <fcub:BENEFADDR1>${escapeXml(data.zone.toUpperCase())}</fcub:BENEFADDR1>
-                        <fcub:BENEFADDR2>${escapeXml(data.woreda.toUpperCase())}</fcub:BENEFADDR2>
-                        <fcub:ADDRS3>${escapeXml(data.woreda.toUpperCase())}</fcub:ADDRS3>
-                        <fcub:ADDRS4>${escapeXml((data.houseNumber || '').toUpperCase())}</fcub:ADDRS4>
                         <fcub:LANG>ENG</fcub:LANG>
-                        <fcub:Custdomestic>
-                        <fcub:MARITALSTAT>${escapeXml(data.maritalStatus || 'S')}</fcub:MARITALSTAT>
-                        </fcub:Custdomestic>
-                        <fcub:Custprof>
-                        <fcub:EMPSTAT>${empStat}</fcub:EMPSTAT>
-                        <fcub:AMTCCY1>ETB</fcub:AMTCCY1>
-                         <fcub:SALARY>${monthlySalary}</fcub:SALARY>
-                         <fcub:SALARY_FREQ>M</fcub:SALARY_FREQ>
-                        </fcub:Custprof>
+                        <fcub:MINOR>N</fcub:MINOR>
+                        <fcub:SAME_CORR_ADDR>Y</fcub:SAME_CORR_ADDR>
+                        <fcub:TITLE>${title}</fcub:TITLE>
+                        <fcub:PAISSUED>N</fcub:PAISSUED>
+                        <fcub:MOTHERMAIDN_NAME>${escapeXml((data.motherMaidenName || '').toUpperCase())}</fcub:MOTHERMAIDN_NAME>
                     </fcub:Custpersonal>
-                   <fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>MAINT_FEE_WAIVED</fcub:FLDNAM>
                         <fcub:FLDVAL>Y</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
-                   <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>PROMOTION_TYPE</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(fcPromotion)}</fcub:FLDVAL>
-                    </fcub:UDFDETAILS>
-                   <fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>CUSTOMER_SEGMENTATION</fcub:FLDNAM>
                         <fcub:FLDVAL>${escapeXml(data.customerSegmentation || 'RETAIL CUSTOMER')}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
-                   <fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>PROMOTION_TYPE</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(fcPromotion)}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>WEALTH_SOURCE</fcub:FLDNAM>
                         <fcub:FLDVAL>${escapeXml(data.wealthSource || 'SAL')}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
@@ -449,40 +452,68 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:FLDVAL>${escapeXml(fcIndustry)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>CUSTOMER_RISK_RATING</fcub:FLDNAM>
-                        <fcub:FLDVAL>LOW</fcub:FLDVAL>
+                        <fcub:FLDNAM>ANNUAL_INCOME</fcub:FLDNAM>
+                        <fcub:FLDVAL>${annualIncome}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>CURRENCY_REDEMPTION_PURPOSE</fcub:FLDNAM>
+                        <fcub:FLDVAL>N</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>IS_THE_CUSTOMER_IN_SANCTION_LIST</fcub:FLDNAM>
                         <fcub:FLDVAL>N</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>CURRENCY_REDEMPTION_PURPOSE</fcub:FLDNAM>
-                        <fcub:FLDVAL>Y</fcub:FLDVAL>
+                        <fcub:FLDNAM>CUSTOMER_RISK_RATING</fcub:FLDNAM>
+                        <fcub:FLDVAL>LOW</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>SLA_ENABLE</fcub:FLDNAM>
-                        <fcub:FLDVAL>N</fcub:FLDVAL>
+                        <fcub:FLDNAM>CB_RM_GROUP</fcub:FLDNAM>
+                        <fcub:FLDVAL>NA</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>LEAD_RM</fcub:FLDNAM>
                         <fcub:FLDVAL>NA</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>AGENTS_NATIONAL_ID_NUMBER</fcub:FLDNAM>
+                        <fcub:FLDVAL/>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>VAT_NO</fcub:FLDNAM>
+                        <fcub:FLDVAL/>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
                         <fcub:FLDNAM>PLTCS_EX_PERSON</fcub:FLDNAM>
                         <fcub:FLDVAL>NO</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>CUSTOMER_TYPE</fcub:FLDNAM>
-                        <fcub:FLDVAL>Individual</fcub:FLDVAL>
+                        <fcub:FLDNAM>OTHER_WEALTH_SOURCE</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(data.otherWealthSource || '')}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>ID_TYPE</fcub:FLDNAM>
-                        <fcub:FLDVAL>National ID</fcub:FLDVAL>
+                        <fcub:FLDNAM>OTHER_OCCUPATION</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(data.otherOccupation || fcOccupation)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
-                        <fcub:FLDNAM>NATIONALITY</fcub:FLDNAM>
-                        <fcub:FLDVAL>ETHIOPIA</fcub:FLDVAL>
+                        <fcub:FLDNAM>OTHER_INDUSTRY</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(data.otherIndustry || '')}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>MAKER</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(config.userId)}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>CHECKER</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(config.userId)}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>FAYDA_PHONE_NUMBER</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(data.phone)}</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>FAYDA_EMAIL</fcub:FLDNAM>
+                        <fcub:FLDVAL>${escapeXml(data.email || '')}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
             </fcub:Customer-Full>
          </fcub:FCUBS_BODY>
