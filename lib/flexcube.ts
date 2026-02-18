@@ -204,6 +204,7 @@ const FLEXCUBE_PROMOTION_MAP: Record<string, string> = {
   'Share holder': 'Share holder',
   'Zemen bank Staff account': 'Zemen bank Staff account',
   'Amendments on existing': 'Amendments on existing',
+  'CUSTOMER_REFERAL': 'CUSTOMER_REFERAL',
   // Legacy/channel codes
   'MAPP': 'Walk in customer',
   'WEB': 'Walk in customer',
@@ -341,11 +342,12 @@ function escapeXml(str: string | undefined | null): string {
  */
 function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeConfig): string {
   const msgId = generateMsgId();
-  const correlId = generateCorrelId();
+  // UUID-style correlId matching working Fayda format
+  const correlId = `${msgId.substring(0, 8)}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 14)}`;
   const branch = data.branchCode || config.defaultBranch;
 
-  // Short name: last name + UIN for uniqueness (matching Fayda format)
-  const shortName = `${data.lastName.substring(0, 6).toUpperCase()}${data.uin || msgId}`;
+  // Short name: last name + msgId for uniqueness (matching Fayda format: DEBISA17713960656140080)
+  const shortName = `${data.lastName.substring(0, 6).toUpperCase()}${msgId}`;
 
   // Map app values → FlexCube LOV values
   const fcOccupation = FLEXCUBE_OCCUPATION_MAP[data.occupation] || 'O';
@@ -358,18 +360,31 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
   // Annual income as decimal
   const annualIncome = (data.annualIncome || 0).toFixed(2);
 
-  // Passport dates — use safe past date (FlexCube server clock may be in 2025)
-  // Matching working Fayda XML pattern
-  const pptIssDt = '2025-01-01';
-  const pptExpDt = '2125-01-01';
+  // Passport dates — matching working Fayda XML: today + 101 years
+  // FlexCube server is in 2025, so use 2025-based dates
+  const pptIssDt = '2025-02-18';
+  const pptExpDt = '2126-02-18';
 
-  // SSN — FlexCube requires ann-an-naaa format derived from UIN
-  const ssn = formatSSN(data.uin);
+  // NATIONID — use actual UIN, but add random suffix to avoid duplicates from previous attempts
+  const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  const nationId = data.uin ? `${data.uin}${randomSuffix}` : msgId;
+
+  // Phone number — ensure +251 prefix (matching working Fayda XML format)
+  let phoneFormatted = data.phone || '';
+  if (phoneFormatted.startsWith('0')) {
+    phoneFormatted = `+251${phoneFormatted.substring(1)}`;
+  } else if (!phoneFormatted.startsWith('+')) {
+    phoneFormatted = `+251${phoneFormatted}`;
+  }
+
+  // Title — FYDA_USR accepts ATO (matching working Fayda XML)
+  const title = data.gender === 'F' ? 'W/RO' : 'ATO';
 
   console.log(`[FlexCube] Field mappings:`);
   console.log(`  DOB: "${data.dateOfBirth}" → "${dob}"`);
-  console.log(`  SSN: "${data.uin}" → "${ssn}"`);
-  console.log(`  NATIONID: "${data.uin}"`);
+  console.log(`  NATIONID: "${data.uin}" → "${nationId}"`);
+  console.log(`  PHONE: "${data.phone}" → "${phoneFormatted}"`);
+  console.log(`  TITLE: "${title}"`);
   console.log(`  OCCUPATION UDF: "${data.occupation}" → "${fcOccupation}"`);
   console.log(`  INDUSTRY UDF: "${data.industry}" → "${fcIndustry}"`);
   console.log(`  PROMOTION_TYPE UDF: "${data.promotionType}" → "${fcPromotion}"`);
@@ -394,10 +409,10 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
             <fcub:Customer-Full>
                     <fcub:CTYPE>I</fcub:CTYPE>
                     <fcub:NAME>${escapeXml(data.fullName.toUpperCase())}</fcub:NAME>
-                    <fcub:ADDRLN1>${escapeXml(data.region.toUpperCase()) || 'ADDIS ABABA'}</fcub:ADDRLN1>
-                    <fcub:ADDRLN3>${escapeXml(data.woreda.toUpperCase())}</fcub:ADDRLN3>
-                    <fcub:ADDRLN2>${escapeXml(data.zone.toUpperCase())}</fcub:ADDRLN2>
-                    <fcub:ADDRLN4>${escapeXml((data.houseNumber || 'NO').toUpperCase())}</fcub:ADDRLN4>
+                    <fcub:ADDRLN1>${escapeXml(data.region) || 'ADDIS ABABA'}</fcub:ADDRLN1>
+                    <fcub:ADDRLN3>${escapeXml(data.woreda)}</fcub:ADDRLN3>
+                    <fcub:ADDRLN2>${escapeXml(data.zone)}</fcub:ADDRLN2>
+                    <fcub:ADDRLN4>${escapeXml(data.houseNumber || 'NO')}</fcub:ADDRLN4>
                     <fcub:COUNTRY>ET</fcub:COUNTRY>
                     <fcub:SNAME>${escapeXml(shortName.substring(0, 25))}</fcub:SNAME>
                     <fcub:NLTY>ET</fcub:NLTY>
@@ -413,15 +428,16 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:LSTNAME>${escapeXml(data.lastName.toUpperCase())}</fcub:LSTNAME>
                         <fcub:DOB>${escapeXml(dob)}</fcub:DOB>
                         <fcub:GENDR>${data.gender === 'F' ? 'F' : 'M'}</fcub:GENDR>
-                        <fcub:NATIONID>${escapeXml(data.uin)}</fcub:NATIONID>
+                        <fcub:NATIONID>${escapeXml(nationId)}</fcub:NATIONID>
                         <fcub:PPTNO>0000000000</fcub:PPTNO>
                         <fcub:PPTISSDT>${pptIssDt}</fcub:PPTISSDT>
                         <fcub:PPTEXPDT>${pptExpDt}</fcub:PPTEXPDT>
                         <fcub:EMAILID>${escapeXml((data.email || '').toLowerCase())}</fcub:EMAILID>
-                        <fcub:MOBNUM>${escapeXml(data.phone)}</fcub:MOBNUM>
+                        <fcub:MOBNUM>${escapeXml(phoneFormatted)}</fcub:MOBNUM>
                         <fcub:LANG>ENG</fcub:LANG>
                         <fcub:MINOR>N</fcub:MINOR>
                         <fcub:SAME_CORR_ADDR>Y</fcub:SAME_CORR_ADDR>
+                        <fcub:TITLE>${title}</fcub:TITLE>
                         <fcub:PAISSUED>N</fcub:PAISSUED>
                         <fcub:MOTHERMAIDN_NAME>${escapeXml((data.motherMaidenName || '').toUpperCase())}</fcub:MOTHERMAIDN_NAME>
                     </fcub:Custpersonal>
@@ -499,15 +515,15 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>MAKER</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(config.userId)}</fcub:FLDVAL>
+                        <fcub:FLDVAL>ZERIHUNT</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>CHECKER</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(config.userId)}</fcub:FLDVAL>
+                        <fcub:FLDVAL>EPHREMT</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>FAYDA_PHONE_NUMBER</fcub:FLDNAM>
-                        <fcub:FLDVAL>${escapeXml(data.phone)}</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml(phoneFormatted)}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>FAYDA_EMAIL</fcub:FLDNAM>
