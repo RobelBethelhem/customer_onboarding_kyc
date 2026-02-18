@@ -464,6 +464,22 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                         <fcub:FLDNAM>LEAD_RM</fcub:FLDNAM>
                         <fcub:FLDVAL>NA</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>PLTCS_EX_PERSON</fcub:FLDNAM>
+                        <fcub:FLDVAL>NO</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>CUSTOMER_TYPE</fcub:FLDNAM>
+                        <fcub:FLDVAL>Individual</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>ID_TYPE</fcub:FLDNAM>
+                        <fcub:FLDVAL>National ID</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
+                    <fcub:UDFDETAILS>
+                        <fcub:FLDNAM>NATIONALITY</fcub:FLDNAM>
+                        <fcub:FLDVAL>ETHIOPIA</fcub:FLDVAL>
+                    </fcub:UDFDETAILS>
             </fcub:Customer-Full>
          </fcub:FCUBS_BODY>
       </fcub:CREATECUSTOMER_FSFS_REQ>
