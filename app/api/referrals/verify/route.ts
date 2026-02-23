@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract 7-digit customer number from 16-digit account
-    // e.g., 1640015678765678 → positions 3-9 → 0015678
-    const customerNumber = accountNumber.substring(3, 10);
+    // Account structure: BRN(3) + 111(3) + CIF(7) + SEQ(3)
+    // e.g., 1641111141541017 → positions 6-12 → 1141541
+    const customerNumber = accountNumber.substring(6, 13);
 
     // Verify customer via FlexCube QueryCustomer
     console.log(`[Referral Verify] Account: ${accountNumber} → CustNo: ${customerNumber}`);
