@@ -54,7 +54,7 @@ const ReferralSchema = new Schema<IReferral>({
   refereeAccountNumber: { type: String },
 
   // Referral metadata
-  referralCode: { type: String, required: true, unique: true, index: true },
+  referralCode: { type: String, required: true, index: true },
   referralLink: { type: String, required: true },
   status: {
     type: String,
@@ -79,6 +79,8 @@ const ReferralSchema = new Schema<IReferral>({
   timestamps: true,
 });
 
+// Compound unique index: same referee can't use same referral code twice
+ReferralSchema.index({ referralCode: 1, refereeCustomerId: 1 }, { unique: true });
 // Compound index for finding all referrals by a referrer
 ReferralSchema.index({ referrerCustomerNumber: 1, status: 1 });
 // Index for ancestor chain multi-level queries
@@ -91,5 +93,27 @@ try {
 } catch {
   Referral = mongoose.model<IReferral>('Referral', ReferralSchema);
 }
+
+// Migration: drop the old unique index on referralCode alone (if it exists)
+// Mongoose won't auto-remove old indexes — we need to do it manually once.
+// This runs on first import and is safe to call multiple times (ignores if not found).
+(async () => {
+  try {
+    const collection = Referral.collection;
+    const indexes = await collection.indexes();
+    const oldIndex = indexes.find(
+      (idx) => idx.name === 'referralCode_1' && idx.unique === true
+    );
+    if (oldIndex) {
+      await collection.dropIndex('referralCode_1');
+      console.log('[Migration] Dropped old unique index referralCode_1 from Referral collection');
+    }
+  } catch (err: any) {
+    // Ignore — collection may not exist yet or connection not ready
+    if (!err.message?.includes('ns not found')) {
+      console.log('[Migration] Could not check/drop old referralCode index:', err.message);
+    }
+  }
+})();
 
 export default Referral;

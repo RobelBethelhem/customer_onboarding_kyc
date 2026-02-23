@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Top referrers (by number of completed referrals)
+    // Top referrers (by number of referrals — all statuses except expired)
     const topReferrers = await Referral.aggregate([
-      { $match: { status: { $in: ['completed', 'rewarded'] } } },
+      { $match: { status: { $in: ['pending', 'completed', 'rewarded'] } } },
       {
         $group: {
           _id: '$referrerCustomerNumber',
@@ -84,11 +84,9 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Recent activity (last 20 completed/rewarded referrals)
-    const recentActivity = await Referral.find({
-      status: { $in: ['completed', 'rewarded'] },
-    })
-      .sort({ completedAt: -1, updatedAt: -1 })
+    // Recent activity (last 20 referrals — all statuses)
+    const recentActivity = await Referral.find({})
+      .sort({ createdAt: -1 })
       .limit(20)
       .select('referrerCustomerNumber referrerName refereeCustomerNumber refereeName referralCode status level completedAt createdAt')
       .lean();
