@@ -614,6 +614,43 @@ function buildQueryCustomerBySSNEnvelope(uin: string, config: FlexCubeConfig): s
 </soapenv:Envelope>`;
 }
 
+/**
+ * Build SOAP envelope for QueryCustomer by CustNo (for referral verification)
+ * Uses IB_SER/EXTIB credentials as per working FlexCube QueryCustomer request
+ */
+function buildQueryCustomerByCustNoEnvelope(custNo: string): string {
+  const msgId = generateMsgId();
+  const correlId = generateCorrelId();
+
+  // Pad customer number to 7 digits
+  const paddedCustNo = custNo.padStart(7, '0');
+
+  return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSCustomerService">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <fcub:QUERYCUSTOMER_IOFS_REQ>
+         <fcub:FCUBS_HEADER>
+            <fcub:SOURCE>EXTIB</fcub:SOURCE>
+            <fcub:UBSCOMP>FCUBS</fcub:UBSCOMP>
+            <fcub:MSGID>${msgId}</fcub:MSGID>
+            <fcub:CORRELID>${correlId}</fcub:CORRELID>
+            <fcub:USERID>IB_SER</fcub:USERID>
+            <fcub:BRANCH>103</fcub:BRANCH>
+            <fcub:SERVICE>FCUBSCustomerService</fcub:SERVICE>
+            <fcub:OPERATION>QueryCustomer</fcub:OPERATION>
+            <fcub:SOURCE_OPERATION>QueryCustomer</fcub:SOURCE_OPERATION>
+            <fcub:MSGSTAT>SUCCESS</fcub:MSGSTAT>
+         </fcub:FCUBS_HEADER>
+         <fcub:FCUBS_BODY>
+            <fcub:Customer-IO>
+               <fcub:CUSTNO>${escapeXml(paddedCustNo)}</fcub:CUSTNO>
+            </fcub:Customer-IO>
+         </fcub:FCUBS_BODY>
+      </fcub:QUERYCUSTOMER_IOFS_REQ>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+}
+
 // ─── SOAP Response Parsers ────────────────────────────────────────────────────
 
 /**
@@ -787,6 +824,73 @@ export async function queryCustomerByUIN(
   } catch (error) {
     console.log(`[FlexCube] QueryCustomer by UIN failed (customer may not exist): ${error}`);
     return null;
+  }
+}
+
+/**
+ * Query FlexCube to look up a customer by CIF/Customer Number.
+ * Used for referral program — verifying that an existing customer is valid.
+ *
+ * Uses IB_SER/EXTIB credentials (separate from FYDA_USR used for CIF creation).
+ * Returns customer details (name, phone, email) or null if not found.
+ */
+export interface QueryCustomerResult {
+  success: boolean;
+  customerNumber: string;
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  branch?: string;
+  message: string;
+}
+
+export async function queryCustomerByCustNo(
+  custNo: string,
+  config: FlexCubeConfig = defaultFlexCubeConfig
+): Promise<QueryCustomerResult> {
+  try {
+    if (!custNo) {
+      return { success: false, customerNumber: '', message: 'Customer number is required' };
+    }
+
+    const paddedCustNo = custNo.padStart(7, '0');
+    console.log(`[FlexCube] QueryCustomer by CustNo: ${paddedCustNo}`);
+
+    const envelope = buildQueryCustomerByCustNoEnvelope(paddedCustNo);
+    const response = await callSoapService(config.customerServiceUrl, envelope, config.timeout);
+
+    if (isSuccessResponse(response)) {
+      const customerNumber = extractXmlValue(response, 'CUSTNO');
+      const fullName = extractXmlValue(response, 'FULLNAME') || extractXmlValue(response, 'NAME');
+      const phone = extractXmlValue(response, 'MOBNUM');
+      const email = extractXmlValue(response, 'EMAILID');
+      const branch = extractXmlValue(response, 'LBRN');
+
+      if (customerNumber && customerNumber !== 'null') {
+        console.log(`[FlexCube] Found customer: ${fullName} (${customerNumber})`);
+        return {
+          success: true,
+          customerNumber,
+          fullName: fullName || '',
+          phone: phone || '',
+          email: email || '',
+          branch: branch || '',
+          message: 'Customer found',
+        };
+      }
+    }
+
+    const errorMsg = extractErrorFromResponse(response);
+    console.log(`[FlexCube] QueryCustomer by CustNo failed: ${errorMsg}`);
+    return { success: false, customerNumber: paddedCustNo, message: errorMsg };
+
+  } catch (error: any) {
+    console.error(`[FlexCube] QueryCustomer by CustNo error:`, error.message);
+    return {
+      success: false,
+      customerNumber: custNo,
+      message: `FlexCube connection error: ${error.message}`,
+    };
   }
 }
 

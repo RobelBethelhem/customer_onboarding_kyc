@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
 import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
 import { createCustomerAndAccount, FlexCubeConfig } from '@/lib/flexcube';
+import { distributeReferralRewards } from '@/lib/referralRewards';
 
 /**
  * Build FlexCube config from workflow settings
@@ -210,6 +211,23 @@ export async function PATCH(
       console.log(`[SMS] To: ${customer.phone}`);
       console.log(`[SMS] Dear ${customer.fullName}, your Zemen Bank account has been created!`);
       console.log(`[SMS] CIF: ${cifNumber} | Account: ${accountNumber}`);
+
+      // ========== REFERRAL REWARD DISTRIBUTION ==========
+      // If this customer was referred, distribute rewards to the referrer chain
+      if (customer.referralCode) {
+        try {
+          const rewardResult = await distributeReferralRewards(
+            customer.customerId,
+            cifNumber,
+            customer.fullName,
+            accountNumber,
+          );
+          console.log(`[Referral] Manual approval rewards: ${rewardResult.message}`);
+        } catch (refError: any) {
+          // Don't fail the approval if referral processing fails
+          console.error(`[Referral] Error distributing rewards: ${refError.message}`);
+        }
+      }
 
     } else if (action === 'reject') {
       customer.status = 'rejected';

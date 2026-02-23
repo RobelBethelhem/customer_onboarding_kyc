@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
 import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
-import { createCustomerAndAccount, FlexCubeConfig } from '@/lib/flexcube';
+import { createCustomerAndAccount, FlexCubeConfig, queryCustomerByCustNo } from '@/lib/flexcube';
+import Referral from '@/lib/models/Referral';
+import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
+import { distributeReferralRewards } from '@/lib/referralRewards';
 
 // Increase body size limit — mobile app sends photos as base64 (can be 10MB+)
 export const maxDuration = 60; // seconds
@@ -243,6 +246,8 @@ export async function POST(request: Request) {
       customerType: body.customerType || 'Individual',
       idType: body.idType || 'National ID',
       nationality: body.nationality || 'ETHIOPIA',
+      // Referral tracking
+      referralCode: body.referralCode || '',
       // Marriage certificate photo (only for married customers)
       marriageCertificatePhoto: body.marriageCertificatePhoto,
       // Photos - Fayda ID photo and selfie
@@ -373,6 +378,102 @@ export async function POST(request: Request) {
 
     const customer = await Customer.create(customerData);
 
+    // ========== REFERRAL LINKING ==========
+    // If the customer was referred, create/link the Referral document
+    let referralResult: any = null;
+    if (body.referralCode && body.referralCode.startsWith('REF-')) {
+      try {
+        const referrerCustNo = body.referralCode.replace('REF-', '');
+        console.log(`[Referral] Linking referral code ${body.referralCode} for customer ${customerId}`);
+
+        // Check if a Referral already exists for this referee
+        let referral = await Referral.findOne({
+          referralCode: body.referralCode,
+          refereeCustomerId: customerId,
+        });
+
+        if (!referral) {
+          // Look up the referrer info (may already exist from verify endpoint)
+          const existingReferral = await Referral.findOne({ referralCode: body.referralCode });
+
+          // Build ancestor chain for multi-level tracking
+          let ancestorChain: string[] = [];
+          let level = 1;
+          let parentReferralId;
+
+          // Check if the referrer was themselves referred
+          const referrerAsReferee = await Referral.findOne({
+            refereeCustomerNumber: referrerCustNo,
+            status: { $in: ['completed', 'rewarded'] },
+          });
+
+          if (referrerAsReferee) {
+            ancestorChain = [...(referrerAsReferee.ancestorChain || []), referrerAsReferee.referrerCustomerNumber];
+            level = (referrerAsReferee.level || 1) + 1;
+            parentReferralId = referrerAsReferee._id;
+          }
+
+          // Load referral config to get the web app base URL
+          let refConfig = await ReferralConfig.findById('default');
+          if (!refConfig) {
+            refConfig = await ReferralConfig.create(defaultReferralConfig);
+          }
+
+          // Try to get referrer name from existing referral or FlexCube
+          let referrerName = existingReferral?.referrerName || '';
+          let referrerAccountNumber = existingReferral?.referrerAccountNumber || '';
+          let referrerPhone = existingReferral?.referrerPhone;
+          let referrerEmail = existingReferral?.referrerEmail;
+
+          if (!referrerName) {
+            // Try FlexCube lookup
+            try {
+              const queryResult = await queryCustomerByCustNo(referrerCustNo);
+              if (queryResult.success) {
+                referrerName = queryResult.fullName || '';
+                referrerPhone = queryResult.phone;
+                referrerEmail = queryResult.email;
+              }
+            } catch (e) {
+              console.log(`[Referral] Could not query FlexCube for referrer: ${e}`);
+            }
+          }
+
+          referral = await Referral.create({
+            referrerCustomerNumber: referrerCustNo,
+            referrerAccountNumber: referrerAccountNumber,
+            referrerName: referrerName || `Customer ${referrerCustNo}`,
+            referrerPhone,
+            referrerEmail,
+            refereeCustomerId: customerId,
+            refereeName: body.fullName,
+            referralCode: body.referralCode,
+            referralLink: `${refConfig.webAppBaseUrl}?ref=${body.referralCode}`,
+            status: 'pending',
+            level,
+            parentReferralId,
+            ancestorChain,
+          });
+
+          console.log(`[Referral] Created referral: ${referral.referralCode} (level ${level})`);
+        }
+
+        // If auto-approved, distribute rewards immediately
+        if (status === 'auto_approved' && cifNumber) {
+          referralResult = await distributeReferralRewards(
+            customerId,
+            cifNumber,
+            body.fullName,
+            accountNumber,
+          );
+          console.log(`[Referral] Auto-approval rewards: ${referralResult.message}`);
+        }
+      } catch (refError: any) {
+        // Don't fail the whole onboarding if referral processing fails
+        console.error(`[Referral] Error processing referral: ${refError.message}`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -382,6 +483,10 @@ export async function POST(request: Request) {
         customerNumber: customer.customerNumber,
         workflowDecision,
         workflowMode: settings.mode,
+        referral: referralResult ? {
+          rewardsDistributed: referralResult.rewardsDistributed,
+          message: referralResult.message,
+        } : undefined,
         message: status === 'auto_approved'
           ? 'Customer account created successfully via auto-approval'
           : 'Application submitted for KYC officer review',

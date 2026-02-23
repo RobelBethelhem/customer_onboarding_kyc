@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Menu,
   TrendingUp,
+  Gift,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -26,6 +27,7 @@ const menuItems = [
   { name: 'Rejected', href: '/rejected', icon: XCircle },
   { name: 'Sanctions & PEP', href: '/sanctions', icon: Shield },
   { name: 'Executive Review', href: '/executive-review', icon: TrendingUp, divider: true },
+  { name: 'Referral Program', href: '/referrals', icon: Gift },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

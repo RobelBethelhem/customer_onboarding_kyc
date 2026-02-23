@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   User, Bell, Shield, Database, Save, Eye, EyeOff,
   Workflow, Zap, UserCheck, AlertCircle, CheckCircle2,
-  Info, Loader2, RefreshCw
+  Info, Loader2, RefreshCw, Gift, Plus, Trash2
 } from 'lucide-react';
 
 interface WorkflowSettings {
@@ -23,6 +23,28 @@ interface WorkflowSettings {
   flexcubeTimeout: number;
   flexcubeEndpoint: string;
 }
+
+interface ReferralSettings {
+  enabled: boolean;
+  maxLevels: number;
+  levelRewards: Array<{ level: number; points: number }>;
+  pointsToEtbRate: number;
+  minRedeemablePoints: number;
+  referralExpiryDays: number;
+  maxReferralsPerCustomer: number;
+  webAppBaseUrl: string;
+}
+
+const defaultReferralSettings: ReferralSettings = {
+  enabled: true,
+  maxLevels: 1,
+  levelRewards: [{ level: 1, points: 100 }],
+  pointsToEtbRate: 1.0,
+  minRedeemablePoints: 100,
+  referralExpiryDays: 90,
+  maxReferralsPerCustomer: 0,
+  webAppBaseUrl: 'http://localhost:3000',
+};
 
 const defaultWorkflowSettings: WorkflowSettings = {
   mode: 'manual',
@@ -43,7 +65,7 @@ const defaultWorkflowSettings: WorkflowSettings = {
 
 export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'workflow' | 'notifications'>('workflow');
+  const [activeTab, setActiveTab] = useState<'profile' | 'workflow' | 'notifications' | 'referral'>('workflow');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [loading, setLoading] = useState(true);
 
@@ -65,10 +87,13 @@ export default function SettingsPage() {
   });
 
   const [workflowSettings, setWorkflowSettings] = useState<WorkflowSettings>(defaultWorkflowSettings);
+  const [referralSettings, setReferralSettings] = useState<ReferralSettings>(defaultReferralSettings);
+  const [referralSaveStatus, setReferralSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Load workflow settings from MongoDB API on mount
   useEffect(() => {
     fetchWorkflowSettings();
+    fetchReferralSettings();
   }, []);
 
   async function fetchWorkflowSettings() {
@@ -141,6 +166,81 @@ export default function SettingsPage() {
     });
   };
 
+  async function fetchReferralSettings() {
+    try {
+      const response = await fetch('/api/referrals/config');
+      const data = await response.json();
+      if (data.success && data.data) {
+        setReferralSettings({
+          enabled: data.data.enabled ?? true,
+          maxLevels: data.data.maxLevels ?? 1,
+          levelRewards: data.data.levelRewards?.length > 0
+            ? data.data.levelRewards
+            : [{ level: 1, points: 100 }],
+          pointsToEtbRate: data.data.pointsToEtbRate ?? 1.0,
+          minRedeemablePoints: data.data.minRedeemablePoints ?? 100,
+          referralExpiryDays: data.data.referralExpiryDays ?? 90,
+          maxReferralsPerCustomer: data.data.maxReferralsPerCustomer ?? 0,
+          webAppBaseUrl: data.data.webAppBaseUrl || 'http://localhost:3000',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch referral settings:', err);
+    }
+  }
+
+  async function handleSaveReferral() {
+    setReferralSaveStatus('saving');
+    try {
+      const response = await fetch('/api/referrals/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...referralSettings,
+          updatedBy: settings.email,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setReferralSaveStatus('saved');
+        setTimeout(() => setReferralSaveStatus('idle'), 2000);
+      } else {
+        setReferralSaveStatus('error');
+        setTimeout(() => setReferralSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save referral settings:', err);
+      setReferralSaveStatus('error');
+      setTimeout(() => setReferralSaveStatus('idle'), 3000);
+    }
+  }
+
+  function addLevelReward() {
+    const nextLevel = referralSettings.levelRewards.length + 1;
+    if (nextLevel > 10) return;
+    setReferralSettings({
+      ...referralSettings,
+      levelRewards: [...referralSettings.levelRewards, { level: nextLevel, points: Math.max(10, Math.floor(100 / nextLevel)) }],
+      maxLevels: Math.max(referralSettings.maxLevels, nextLevel),
+    });
+  }
+
+  function removeLevelReward(index: number) {
+    if (referralSettings.levelRewards.length <= 1) return;
+    const newRewards = referralSettings.levelRewards.filter((_, i) => i !== index);
+    setReferralSettings({
+      ...referralSettings,
+      levelRewards: newRewards,
+      maxLevels: newRewards.length,
+    });
+  }
+
+  function updateLevelRewardPoints(index: number, points: number) {
+    const newRewards = [...referralSettings.levelRewards];
+    newRewards[index] = { ...newRewards[index], points };
+    setReferralSettings({ ...referralSettings, levelRewards: newRewards });
+  }
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -211,6 +311,7 @@ export default function SettingsPage() {
         <nav className="flex gap-8">
           {[
             { id: 'workflow', label: 'KYC Workflow', icon: Workflow },
+            { id: 'referral', label: 'Referral Program', icon: Gift },
             { id: 'profile', label: 'Profile', icon: User },
             { id: 'notifications', label: 'Notifications', icon: Bell },
           ].map((tab) => (
@@ -669,6 +770,265 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Referral Program Tab */}
+      {activeTab === 'referral' && (
+        <div className="space-y-6">
+          {/* Program Toggle */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Referral Program</h2>
+                  <p className="text-sm text-gray-500">Configure the customer referral reward system</p>
+                </div>
+              </div>
+              <button
+                onClick={handleSaveReferral}
+                disabled={referralSaveStatus === 'saving'}
+                className={`flex items-center gap-2 px-5 py-2 rounded-lg font-medium transition-all text-sm ${
+                  referralSaveStatus === 'saved'
+                    ? 'bg-green-600 text-white'
+                    : referralSaveStatus === 'error'
+                    ? 'bg-red-600 text-white'
+                    : referralSaveStatus === 'saving'
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-amber-600 text-white hover:bg-amber-700'
+                }`}
+              >
+                {referralSaveStatus === 'saved' ? (
+                  <><CheckCircle2 className="w-4 h-4" /> Saved!</>
+                ) : referralSaveStatus === 'saving' ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                ) : (
+                  <><Save className="w-4 h-4" /> Save Referral Settings</>
+                )}
+              </button>
+            </div>
+
+            {/* Enable/Disable Toggle */}
+            <div className="flex items-center justify-between py-4 border-b">
+              <div>
+                <p className="font-medium text-gray-900">Enable Referral Program</p>
+                <p className="text-sm text-gray-500">Master switch — when off, no new referrals can be created</p>
+              </div>
+              <button
+                onClick={() => setReferralSettings({ ...referralSettings, enabled: !referralSettings.enabled })}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  referralSettings.enabled ? 'bg-green-600' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  referralSettings.enabled ? 'translate-x-7' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+
+            {!referralSettings.enabled && (
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-700">
+                  <span className="font-medium">Program disabled:</span> Existing referral links will not work and no new rewards will be distributed.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {referralSettings.enabled && (
+            <>
+              {/* Multi-Level Rewards Configuration */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Multi-Level Rewards</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Configure how many levels of referrals earn rewards, and how many points each level gets.
+                </p>
+
+                <div className="space-y-3">
+                  {referralSettings.levelRewards.map((reward, index) => (
+                    <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0">
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                          index === 0 ? 'bg-amber-100 text-amber-700'
+                          : index === 1 ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {reward.level}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">
+                          Level {reward.level} {index === 0 ? '(Direct Referral)' : `(${index + 1} levels deep)`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={reward.points}
+                          onChange={(e) => updateLevelRewardPoints(index, parseInt(e.target.value) || 0)}
+                          min="0"
+                          className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                        <span className="text-sm text-gray-500">points</span>
+                      </div>
+                      {index > 0 && (
+                        <button
+                          onClick={() => removeLevelReward(index)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {referralSettings.levelRewards.length < 10 && (
+                  <button
+                    onClick={addLevelReward}
+                    className="mt-3 flex items-center gap-2 px-4 py-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Level {referralSettings.levelRewards.length + 1}
+                  </button>
+                )}
+
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <span className="font-medium">How it works:</span> If A refers B, and B refers C — when C completes onboarding:
+                    B earns Level 1 points ({referralSettings.levelRewards[0]?.points || 0})
+                    {referralSettings.levelRewards.length > 1 && `, A earns Level 2 points (${referralSettings.levelRewards[1]?.points || 0})`}
+                    {referralSettings.levelRewards.length > 2 && ', and so on up the chain'}.
+                  </p>
+                </div>
+              </div>
+
+              {/* Points-to-ETB Conversion */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Points Conversion</h3>
+                <p className="text-sm text-gray-500 mb-4">Configure how points convert to Ethiopian Birr (ETB)</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Points-to-ETB Rate
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">1 point =</span>
+                      <input
+                        type="number"
+                        value={referralSettings.pointsToEtbRate}
+                        onChange={(e) => setReferralSettings({
+                          ...referralSettings,
+                          pointsToEtbRate: parseFloat(e.target.value) || 0.01,
+                        })}
+                        step="0.01"
+                        min="0.01"
+                        className="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <span className="text-sm text-gray-500">ETB</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Redeemable Points
+                    </label>
+                    <input
+                      type="number"
+                      value={referralSettings.minRedeemablePoints}
+                      onChange={(e) => setReferralSettings({
+                        ...referralSettings,
+                        minRedeemablePoints: parseInt(e.target.value) || 1,
+                      })}
+                      min="1"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Customers must have at least this many points to convert
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    <span className="font-medium">Example:</span> With {referralSettings.levelRewards[0]?.points || 100} points per direct referral and a rate of {referralSettings.pointsToEtbRate} ETB/point, each successful referral earns{' '}
+                    <span className="font-bold">{((referralSettings.levelRewards[0]?.points || 100) * referralSettings.pointsToEtbRate).toFixed(2)} ETB</span>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Limits & Expiry */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Limits & Expiry</h3>
+                <p className="text-sm text-gray-500 mb-4">Set boundaries for referral usage</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Referral Link Expiry (days)
+                    </label>
+                    <input
+                      type="number"
+                      value={referralSettings.referralExpiryDays}
+                      onChange={(e) => setReferralSettings({
+                        ...referralSettings,
+                        referralExpiryDays: parseInt(e.target.value) || 0,
+                      })}
+                      min="0"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Set to 0 for no expiry</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Referrals Per Customer
+                    </label>
+                    <input
+                      type="number"
+                      value={referralSettings.maxReferralsPerCustomer}
+                      onChange={(e) => setReferralSettings({
+                        ...referralSettings,
+                        maxReferralsPerCustomer: parseInt(e.target.value) || 0,
+                      })}
+                      min="0"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Set to 0 for unlimited</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Web App URL */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Web App Configuration</h3>
+                <p className="text-sm text-gray-500 mb-4">Base URL for generating referral links</p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Web App Base URL
+                  </label>
+                  <input
+                    type="text"
+                    value={referralSettings.webAppBaseUrl}
+                    onChange={(e) => setReferralSettings({
+                      ...referralSettings,
+                      webAppBaseUrl: e.target.value,
+                    })}
+                    placeholder="http://localhost:3000"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono text-sm"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Referral links will be: <code className="bg-gray-100 px-1 rounded">{referralSettings.webAppBaseUrl}?ref=REF-XXXXXXX</code>
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

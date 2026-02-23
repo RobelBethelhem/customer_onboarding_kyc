@@ -75,6 +75,8 @@ export interface ICustomer extends Document {
   customerType?: string;             // Customer type (default: 'Individual')
   idType?: string;                   // ID type (default: 'National ID')
   nationality?: string;              // Nationality (default: 'ETHIOPIA')
+  // Referral tracking
+  referralCode?: string;              // Referral code used by this customer (e.g., REF-0015678)
 }
 
 // Default placeholder photo
@@ -168,6 +170,8 @@ const CustomerSchema = new Schema<ICustomer>({
   customerType: { type: String, default: 'Individual' },
   idType: { type: String, default: 'National ID' },
   nationality: { type: String, default: 'ETHIOPIA' },
+  // Referral tracking
+  referralCode: { type: String, default: '' },
 }, {
   timestamps: true,
 });
