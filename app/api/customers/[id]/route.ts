@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
 import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
-import { createCustomerAndAccount, FlexCubeConfig } from '@/lib/flexcube';
+import { createCustomerAndAccount, FlexCubeConfig, queryCustomerByCustNo } from '@/lib/flexcube';
 import { distributeReferralRewards } from '@/lib/referralRewards';
+import Referral from '@/lib/models/Referral';
+import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
 
 /**
  * Build FlexCube config from workflow settings
@@ -214,8 +216,59 @@ export async function PATCH(
 
       // ========== REFERRAL REWARD DISTRIBUTION ==========
       // If this customer was referred, distribute rewards to the referrer chain
-      if (customer.referralCode) {
+      if (customer.referralCode && customer.referralCode.startsWith('REF-')) {
         try {
+          const referralCode = customer.referralCode;
+          const referrerCustNo = referralCode.replace('REF-', '');
+          console.log(`[Referral] Manual approval — checking referral for ${customer.customerId} (code: ${referralCode})`);
+
+          // Self-healing: if Referral doc was never created (silent error in onboarding), create it now
+          let existingReferral = await Referral.findOne({
+            referralCode: referralCode,
+            refereeCustomerId: customer.customerId,
+          });
+
+          if (!existingReferral) {
+            console.log(`[Referral] No Referral document found — creating one now (self-healing)`);
+
+            // Look up referrer info from FlexCube
+            let referrerName = `Customer ${referrerCustNo}`;
+            let referrerPhone = '';
+            let referrerEmail = '';
+            try {
+              const queryResult = await queryCustomerByCustNo(referrerCustNo);
+              if (queryResult.success) {
+                referrerName = queryResult.fullName || referrerName;
+                referrerPhone = queryResult.phone || '';
+                referrerEmail = queryResult.email || '';
+              }
+            } catch (e) {
+              console.log(`[Referral] Could not query FlexCube for referrer: ${e}`);
+            }
+
+            // Load referral config
+            let refConfig = await ReferralConfig.findById('default');
+            if (!refConfig) {
+              refConfig = await ReferralConfig.create(defaultReferralConfig);
+            }
+
+            existingReferral = await Referral.create({
+              referrerCustomerNumber: referrerCustNo,
+              referrerName,
+              referrerPhone,
+              referrerEmail,
+              refereeCustomerId: customer.customerId,
+              refereeName: customer.fullName,
+              referralCode: referralCode,
+              referralLink: `${refConfig.webAppBaseUrl || 'http://localhost:3000'}?ref=${referralCode}`,
+              status: 'pending',
+              level: 1,
+              ancestorChain: [],
+            });
+            console.log(`[Referral] Created Referral document: ${existingReferral.referralCode}`);
+          }
+
+          // Now distribute rewards (Referral doc guaranteed to exist)
           const rewardResult = await distributeReferralRewards(
             customer.customerId,
             cifNumber,
@@ -225,7 +278,13 @@ export async function PATCH(
           console.log(`[Referral] Manual approval rewards: ${rewardResult.message}`);
         } catch (refError: any) {
           // Don't fail the approval if referral processing fails
-          console.error(`[Referral] Error distributing rewards: ${refError.message}`);
+          console.error(`[Referral] ❌ Error distributing rewards:`, refError.message);
+          console.error(`[Referral] Error details:`, JSON.stringify({
+            referralCode: customer.referralCode,
+            customerId: customer.customerId,
+            errorName: refError.name,
+            errorCode: refError.code,
+          }));
         }
       }
 

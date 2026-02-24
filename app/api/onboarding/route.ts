@@ -3,9 +3,12 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Customer from '@/lib/models/Customer';
 import WorkflowSettings, { defaultWorkflowSettings } from '@/lib/models/WorkflowSettings';
 import { createCustomerAndAccount, FlexCubeConfig, queryCustomerByCustNo } from '@/lib/flexcube';
-import Referral from '@/lib/models/Referral';
+import Referral, { migrateReferralIndexes } from '@/lib/models/Referral';
 import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
 import { distributeReferralRewards } from '@/lib/referralRewards';
+
+// Run referral index migration once on first request
+let referralIndexesMigrated = false;
 
 // Increase body size limit — mobile app sends photos as base64 (can be 10MB+)
 export const maxDuration = 60; // seconds
@@ -101,6 +104,12 @@ async function callFlexCubeService(customerData: any, settings: any): Promise<{
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
+
+    // Run referral index migration once (drops old unique index, syncs new compound indexes)
+    if (!referralIndexesMigrated) {
+      await migrateReferralIndexes();
+      referralIndexesMigrated = true;
+    }
 
     const body = await request.json();
 
@@ -470,7 +479,14 @@ export async function POST(request: Request) {
         }
       } catch (refError: any) {
         // Don't fail the whole onboarding if referral processing fails
-        console.error(`[Referral] Error processing referral: ${refError.message}`);
+        console.error(`[Referral] ❌ Error processing referral:`, refError.message);
+        console.error(`[Referral] Error details:`, JSON.stringify({
+          referralCode: body.referralCode,
+          customerId,
+          errorName: refError.name,
+          errorCode: refError.code,
+          stack: refError.stack?.split('\n').slice(0, 3).join(' | '),
+        }));
       }
     }
 

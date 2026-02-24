@@ -57,10 +57,28 @@ export async function distributeReferralRewards(
     }
 
     // 2. Find the pending referral for this referee
-    const referral = await Referral.findOne({
+    console.log(`[Referral] Looking for pending referral for referee: ${refereeCustomerId}`);
+    let referral = await Referral.findOne({
       refereeCustomerId,
       status: 'pending',
     });
+
+    // Fallback: try finding by refereeCustomerId regardless of status (may have been manually created)
+    if (!referral) {
+      referral = await Referral.findOne({
+        refereeCustomerId,
+        status: { $in: ['pending', 'completed'] },
+      });
+      if (referral && referral.status === 'completed') {
+        console.log(`[Referral] Found completed referral for ${refereeCustomerId} — already rewarded`);
+        return {
+          success: true,
+          message: 'Referral already completed',
+          rewardsDistributed: 0,
+          details: [],
+        };
+      }
+    }
 
     if (!referral) {
       // No referral found — this is an organic customer (not referred)

@@ -5,7 +5,7 @@ export type ReferralStatus = 'pending' | 'completed' | 'expired' | 'rewarded';
 export interface IReferral extends Document {
   // The referrer (existing customer who shared the link)
   referrerCustomerNumber: string;   // 7-digit CIF number (e.g., '0015678')
-  referrerAccountNumber: string;    // 16-digit account number
+  referrerAccountNumber?: string;   // 16-digit account number (optional — not available for web referrals)
   referrerName: string;             // Full name from FlexCube QueryCustomer
   referrerPhone?: string;
   referrerEmail?: string;
@@ -42,7 +42,7 @@ export interface IReferral extends Document {
 const ReferralSchema = new Schema<IReferral>({
   // Referrer
   referrerCustomerNumber: { type: String, required: true, index: true },
-  referrerAccountNumber: { type: String, required: true },
+  referrerAccountNumber: { type: String, default: '' },
   referrerName: { type: String, required: true },
   referrerPhone: { type: String },
   referrerEmail: { type: String },
@@ -55,7 +55,7 @@ const ReferralSchema = new Schema<IReferral>({
 
   // Referral metadata
   referralCode: { type: String, required: true, index: true },
-  referralLink: { type: String, required: true },
+  referralLink: { type: String, default: '' },
   status: {
     type: String,
     enum: ['pending', 'completed', 'expired', 'rewarded'],
@@ -94,26 +94,35 @@ try {
   Referral = mongoose.model<IReferral>('Referral', ReferralSchema);
 }
 
-// Migration: drop the old unique index on referralCode alone (if it exists)
-// Mongoose won't auto-remove old indexes — we need to do it manually once.
-// This runs on first import and is safe to call multiple times (ignores if not found).
-(async () => {
+// Migration: drop old indexes that conflict with current schema.
+// Mongoose won't auto-remove old indexes — we must do it manually.
+// Safe to call multiple times (ignores if not found).
+async function migrateReferralIndexes() {
   try {
     const collection = Referral.collection;
     const indexes = await collection.indexes();
-    const oldIndex = indexes.find(
+
+    // Drop the old unique index on referralCode alone (was: unique: true)
+    const oldUniqueIndex = indexes.find(
       (idx) => idx.name === 'referralCode_1' && idx.unique === true
     );
-    if (oldIndex) {
+    if (oldUniqueIndex) {
       await collection.dropIndex('referralCode_1');
-      console.log('[Migration] Dropped old unique index referralCode_1 from Referral collection');
+      console.log('[Migration] Dropped old unique index referralCode_1');
     }
+
+    // Sync indexes to ensure new compound indexes are created
+    await Referral.syncIndexes();
+    console.log('[Migration] Referral indexes synced successfully');
   } catch (err: any) {
-    // Ignore — collection may not exist yet or connection not ready
+    // Ignore if collection doesn't exist yet
     if (!err.message?.includes('ns not found')) {
-      console.log('[Migration] Could not check/drop old referralCode index:', err.message);
+      console.log('[Migration] Referral index migration note:', err.message);
     }
   }
-})();
+}
+
+// Export so it can be called after DB connection is ready
+export { migrateReferralIndexes };
 
 export default Referral;
