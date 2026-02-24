@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Referral from '@/lib/models/Referral';
 import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
+import Customer from '@/lib/models/Customer';
 import { queryCustomerByCustNo } from '@/lib/flexcube';
 
 // CORS headers for web app
@@ -95,10 +96,24 @@ export async function POST(request: NextRequest) {
     // Build the ancestor chain for this referrer
     // Check if this customer was themselves referred (for multi-level)
     let ancestorChain: string[] = [];
-    const referrerAsReferee = await Referral.findOne({
+    let referrerAsReferee = await Referral.findOne({
       refereeCustomerNumber: customerNumber,
-      status: { $in: ['completed', 'rewarded'] },
     });
+
+    // Fallback: look up via Customer model if CIF not found in refereeCustomerNumber
+    if (!referrerAsReferee) {
+      const referrerCustomer = await Customer.findOne({
+        $or: [
+          { customerNumber: customerNumber },
+          { cifNumber: customerNumber },
+        ],
+      });
+      if (referrerCustomer?.referralCode) {
+        referrerAsReferee = await Referral.findOne({
+          refereeCustomerId: referrerCustomer.customerId,
+        });
+      }
+    }
 
     if (referrerAsReferee) {
       // This referrer was referred by someone else — build the chain

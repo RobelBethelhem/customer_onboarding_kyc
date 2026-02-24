@@ -410,16 +410,33 @@ export async function POST(request: Request) {
           let level = 1;
           let parentReferralId;
 
-          // Check if the referrer was themselves referred
-          const referrerAsReferee = await Referral.findOne({
+          // Check if the referrer was themselves referred (for multi-level rewards)
+          // Search by refereeCustomerNumber (CIF) OR by looking up the referrer's Customer doc
+          let referrerAsReferee = await Referral.findOne({
             refereeCustomerNumber: referrerCustNo,
-            status: { $in: ['completed', 'rewarded'] },
           });
+
+          // If not found by CIF, try finding via Customer model (the referrer might have a referralCode)
+          if (!referrerAsReferee) {
+            const referrerCustomer = await Customer.findOne({
+              $or: [
+                { customerNumber: referrerCustNo },
+                { cifNumber: referrerCustNo },
+              ],
+            });
+            if (referrerCustomer?.referralCode) {
+              // The referrer was referred — find their Referral doc
+              referrerAsReferee = await Referral.findOne({
+                refereeCustomerId: referrerCustomer.customerId,
+              });
+            }
+          }
 
           if (referrerAsReferee) {
             ancestorChain = [...(referrerAsReferee.ancestorChain || []), referrerAsReferee.referrerCustomerNumber];
             level = (referrerAsReferee.level || 1) + 1;
             parentReferralId = referrerAsReferee._id;
+            console.log(`[Referral] Multi-level: referrer ${referrerCustNo} was referred at level ${referrerAsReferee.level}. New level: ${level}, ancestors: [${ancestorChain.join(', ')}]`);
           }
 
           // Load referral config to get the web app base URL

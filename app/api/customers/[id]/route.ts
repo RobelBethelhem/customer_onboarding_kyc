@@ -252,6 +252,35 @@ export async function PATCH(
               refConfig = await ReferralConfig.create(defaultReferralConfig);
             }
 
+            // Build ancestor chain for multi-level tracking
+            let ancestorChain: string[] = [];
+            let level = 1;
+            let parentReferralId;
+
+            // Check if the referrer was themselves referred
+            let referrerAsReferee = await Referral.findOne({
+              refereeCustomerNumber: referrerCustNo,
+            });
+            if (!referrerAsReferee) {
+              const referrerCustomer = await Customer.findOne({
+                $or: [
+                  { customerNumber: referrerCustNo },
+                  { cifNumber: referrerCustNo },
+                ],
+              });
+              if (referrerCustomer?.referralCode) {
+                referrerAsReferee = await Referral.findOne({
+                  refereeCustomerId: referrerCustomer.customerId,
+                });
+              }
+            }
+            if (referrerAsReferee) {
+              ancestorChain = [...(referrerAsReferee.ancestorChain || []), referrerAsReferee.referrerCustomerNumber];
+              level = (referrerAsReferee.level || 1) + 1;
+              parentReferralId = referrerAsReferee._id;
+              console.log(`[Referral] Multi-level: referrer ${referrerCustNo} was referred at level ${referrerAsReferee.level}. New level: ${level}, ancestors: [${ancestorChain.join(', ')}]`);
+            }
+
             existingReferral = await Referral.create({
               referrerCustomerNumber: referrerCustNo,
               referrerName,
@@ -262,8 +291,9 @@ export async function PATCH(
               referralCode: referralCode,
               referralLink: `${refConfig.webAppBaseUrl || 'http://localhost:3000'}?ref=${referralCode}`,
               status: 'pending',
-              level: 1,
-              ancestorChain: [],
+              level,
+              parentReferralId,
+              ancestorChain,
             });
             console.log(`[Referral] Created Referral document: ${existingReferral.referralCode}`);
           }
