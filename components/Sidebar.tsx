@@ -63,7 +63,7 @@ export default function Sidebar() {
 
   async function fetchPendingCount() {
     try {
-      const response = await fetch('/api/customers?status=pending_all&limit=0');
+      const response = await fetch('/akal/api/customers?status=pending_all&limit=0');
       const data = await response.json();
       if (data.success) {
         setPendingCount(data.total);

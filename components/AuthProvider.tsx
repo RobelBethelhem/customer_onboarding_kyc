@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    fetch('/akal/api/auth/me')
       .then(res => res.json())
       .then(data => {
         if (data.success) setUser(data.user);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/akal/api/auth/logout', { method: 'POST' });
     setUser(null);
     router.push('/login');
   }

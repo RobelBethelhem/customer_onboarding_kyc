@@ -39,7 +39,7 @@ export default function UserManagementPage() {
 
   async function fetchUsers() {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/akal/api/users');
       const data = await res.json();
       if (data.success) {
         setUsers(data.users);
@@ -76,7 +76,7 @@ export default function UserManagementPage() {
         const body: any = { name: formData.name, role: formData.role };
         if (formData.password) body.password = formData.password;
 
-        const res = await fetch(`/api/users/${editingUser._id}`, {
+        const res = await fetch(`/akal/api/users/${editingUser._id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -98,7 +98,7 @@ export default function UserManagementPage() {
           return;
         }
 
-        const res = await fetch('/api/users', {
+        const res = await fetch('/akal/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -123,9 +123,9 @@ export default function UserManagementPage() {
   async function toggleUserStatus(user: UserRecord) {
     try {
       if (user.isActive) {
-        await fetch(`/api/users/${user._id}`, { method: 'DELETE' });
+        await fetch(`/akal/api/users/${user._id}`, { method: 'DELETE' });
       } else {
-        await fetch(`/api/users/${user._id}`, {
+        await fetch(`/akal/api/users/${user._id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ isActive: true }),

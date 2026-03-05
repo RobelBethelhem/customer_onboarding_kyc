@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: '/akal',
   reactStrictMode: true,
   // Increase body size limit for API routes — mobile app sends base64 photos
   experimental: {

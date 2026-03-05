@@ -1,6 +1,6 @@
 // API client for fetching data from the backend
 
-const API_BASE = '/api';
+const API_BASE = '/akal/api';
 
 export interface Customer {
   _id: string;

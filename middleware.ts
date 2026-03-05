@@ -67,6 +67,13 @@ function checkApiAccess(role: string, method: string, pathname: string): boolean
   return false;
 }
 
+// Helper: create redirect URL that respects basePath
+function createRedirectUrl(request: NextRequest, pathname: string): URL {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  return url;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
@@ -88,7 +95,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(createRedirectUrl(request, '/login'));
   }
 
   // Verify JWT
@@ -104,9 +111,9 @@ export async function middleware(request: NextRequest) {
       if (!checkPageAccess(role, pathname)) {
         // Redirect to appropriate landing page
         if (role === 'marketing') {
-          return NextResponse.redirect(new URL('/referrals', request.url));
+          return NextResponse.redirect(createRedirectUrl(request, '/referrals'));
         }
-        return NextResponse.redirect(new URL('/', request.url));
+        return NextResponse.redirect(createRedirectUrl(request, '/'));
       }
     }
 
@@ -132,7 +139,7 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
-    const response = NextResponse.redirect(new URL('/login', request.url));
+    const response = NextResponse.redirect(createRedirectUrl(request, '/login'));
     response.cookies.set('auth-token', '', { maxAge: 0, path: '/' });
     return response;
   }

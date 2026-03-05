@@ -115,7 +115,7 @@ export default function SettingsPage() {
   async function fetchWorkflowSettings() {
     try {
       setLoading(true);
-      const response = await fetch('/api/workflow');
+      const response = await fetch('/akal/api/workflow');
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -147,7 +147,7 @@ export default function SettingsPage() {
     setSaveStatus('saving');
 
     try {
-      const response = await fetch('/api/workflow', {
+      const response = await fetch('/akal/api/workflow', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ export default function SettingsPage() {
 
   async function fetchReferralSettings() {
     try {
-      const response = await fetch('/api/referrals/config');
+      const response = await fetch('/akal/api/referrals/config');
       const data = await response.json();
       if (data.success && data.data) {
         setReferralSettings({
@@ -208,7 +208,7 @@ export default function SettingsPage() {
   async function handleSaveReferral() {
     setReferralSaveStatus('saving');
     try {
-      const response = await fetch('/api/referrals/config', {
+      const response = await fetch('/akal/api/referrals/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

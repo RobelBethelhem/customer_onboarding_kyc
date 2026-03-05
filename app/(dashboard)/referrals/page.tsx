@@ -55,7 +55,7 @@ export default function ReferralDashboardPage() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/referrals/stats');
+      const response = await fetch('/akal/api/referrals/stats');
       const data = await response.json();
       if (data.success) {
         setStats(data.data);

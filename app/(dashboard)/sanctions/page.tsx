@@ -178,8 +178,8 @@ export default function SanctionsPage() {
       if (filterSource) params.set('source', filterSource);
 
       const [entriesRes, sourcesRes] = await Promise.all([
-        fetch(`/api/sanctions?${params}`),
-        fetch('/api/sanctions/sources'),
+        fetch(`/akal/api/sanctions?${params}`),
+        fetch('/akal/api/sanctions/sources'),
       ]);
 
       const entriesData = await entriesRes.json();
@@ -203,7 +203,7 @@ export default function SanctionsPage() {
 
   async function loadAuditLogs() {
     try {
-      const res = await fetch('/api/sanctions/audit?module=SANCTIONS&limit=100');
+      const res = await fetch('/akal/api/sanctions/audit?module=SANCTIONS&limit=100');
       const data = await res.json();
       if (data.success) {
         setAuditLogs(data.data);
@@ -217,7 +217,7 @@ export default function SanctionsPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('/api/sanctions', {
+      const res = await fetch('/akal/api/sanctions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +247,7 @@ export default function SanctionsPage() {
     if (!selectedEntry) return;
 
     try {
-      const res = await fetch(`/api/sanctions/${selectedEntry.entryId}`, {
+      const res = await fetch(`/akal/api/sanctions/${selectedEntry.entryId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -276,7 +276,7 @@ export default function SanctionsPage() {
     if (!selectedEntry) return;
 
     try {
-      const res = await fetch(`/api/sanctions/${selectedEntry.entryId}?deletedBy=Admin`, {
+      const res = await fetch(`/akal/api/sanctions/${selectedEntry.entryId}?deletedBy=Admin`, {
         method: 'DELETE',
       });
 
@@ -359,7 +359,7 @@ export default function SanctionsPage() {
     }
 
     try {
-      const res = await fetch('/api/sanctions/import', {
+      const res = await fetch('/akal/api/sanctions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -394,7 +394,7 @@ export default function SanctionsPage() {
       if (filterSource) params.set('source', filterSource);
       params.set('exportedBy', 'Admin');
 
-      const res = await fetch(`/api/sanctions/export?${params}`);
+      const res = await fetch(`/akal/api/sanctions/export?${params}`);
       const data = await res.json();
 
       if (data.success) {
