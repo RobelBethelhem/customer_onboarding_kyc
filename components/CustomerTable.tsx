@@ -10,18 +10,20 @@ interface CustomerTableProps {
   showFilters?: boolean;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   pending: 'badge-warning',
   verified: 'badge-info',
   approved: 'badge-success',
   rejected: 'badge-error',
+  auto_approved: 'badge-success',
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   pending: 'Pending',
   verified: 'Verified',
   approved: 'Approved',
   rejected: 'Rejected',
+  auto_approved: 'Auto Approved',
 };
 
 export default function CustomerTable({ customers, title = 'Recent Applications', showFilters = true }: CustomerTableProps) {

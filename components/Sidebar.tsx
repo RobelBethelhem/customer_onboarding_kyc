@@ -16,32 +16,50 @@ import {
   Menu,
   TrendingUp,
   Gift,
+  Users,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useAuth, UserRole } from './AuthProvider';
 
-const menuItems = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Pending Review', href: '/pending', icon: Clock, badge: true },
-  { name: 'Auto Approved', href: '/auto-approved', icon: Zap },
-  { name: 'Manually Approved', href: '/approved', icon: CheckCircle2 },
-  { name: 'Rejected', href: '/rejected', icon: XCircle },
-  { name: 'Sanctions & PEP', href: '/sanctions', icon: Shield },
-  { name: 'Executive Review', href: '/executive-review', icon: TrendingUp, divider: true },
-  { name: 'Referral Program', href: '/referrals', icon: Gift },
-  { name: 'Settings', href: '/settings', icon: Settings },
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: any;
+  badge?: boolean;
+  divider?: boolean;
+  roles: UserRole[];
+}
+
+const menuItems: MenuItem[] = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'kyc'] },
+  { name: 'Pending Review', href: '/pending', icon: Clock, badge: true, roles: ['admin', 'kyc'] },
+  { name: 'Auto Approved', href: '/auto-approved', icon: Zap, roles: ['admin', 'kyc'] },
+  { name: 'Manually Approved', href: '/approved', icon: CheckCircle2, roles: ['admin', 'kyc'] },
+  { name: 'Rejected', href: '/rejected', icon: XCircle, roles: ['admin', 'kyc'] },
+  { name: 'Sanctions & PEP', href: '/sanctions', icon: Shield, roles: ['admin', 'kyc'] },
+  { name: 'Executive Review', href: '/executive-review', icon: TrendingUp, divider: true, roles: ['admin', 'kyc'] },
+  { name: 'Referral Program', href: '/referrals', icon: Gift, roles: ['admin', 'marketing'] },
+  { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'kyc', 'marketing'] },
+  { name: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
+  const filteredItems = menuItems.filter(item =>
+    user && item.roles.includes(user.role)
+  );
+
   useEffect(() => {
-    fetchPendingCount();
-    // Refresh count every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (user && (user.role === 'admin' || user.role === 'kyc')) {
+      fetchPendingCount();
+      const interval = setInterval(fetchPendingCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   async function fetchPendingCount() {
     try {
@@ -54,6 +72,15 @@ export default function Sidebar() {
       console.error('Failed to fetch pending count:', err);
     }
   }
+
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'admin': return 'Administrator';
+      case 'kyc': return 'KYC Officer';
+      case 'marketing': return 'Marketing';
+      default: return 'User';
+    }
+  };
 
   return (
     <aside
@@ -84,7 +111,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        {menuItems.map((item, index) => {
+        {filteredItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
@@ -126,17 +153,21 @@ export default function Sidebar() {
       {/* User section */}
       <div className="p-4 border-t border-slate-700/50">
         <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold">K</span>
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
           </div>
           {!collapsed && (
-            <div className="flex-1">
-              <p className="text-white font-medium text-sm">KYC Officer</p>
-              <p className="text-slate-400 text-xs">kyc@zemenbank.com</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-medium text-sm truncate">{user?.name || 'User'}</p>
+              <p className="text-slate-400 text-xs truncate">{getRoleLabel(user?.role)}</p>
             </div>
           )}
           {!collapsed && (
-            <button className="p-2 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-red-400 transition-colors">
+            <button
+              onClick={logout}
+              className="p-2 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-red-400 transition-colors"
+              title="Sign out"
+            >
               <LogOut size={18} />
             </button>
           )}

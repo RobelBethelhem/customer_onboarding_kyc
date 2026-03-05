@@ -5,7 +5,7 @@ export interface ILevelReward {
   points: number;       // Points awarded at this level
 }
 
-export interface IReferralConfig extends Document {
+export interface IReferralConfig extends Omit<Document, '_id'> {
   _id: string;                      // Always 'default' (singleton)
 
   // Program toggle

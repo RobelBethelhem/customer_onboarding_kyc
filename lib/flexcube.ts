@@ -1023,8 +1023,11 @@ export async function createCustomerAndAccount(
     kebele?: string;
     houseNumber?: string;
     occupation: string;
+    otherOccupation?: string;
     industry: string;
+    otherIndustry?: string;
     wealthSource: string;
+    otherWealthSource?: string;
     annualIncome: number;
     branchCode: string;
     accountTypeId: string;

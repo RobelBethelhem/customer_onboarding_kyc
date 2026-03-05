@@ -2,7 +2,7 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 
 export type WorkflowMode = 'auto' | 'manual';
 
-export interface IWorkflowSettings extends Document {
+export interface IWorkflowSettings extends Omit<Document, '_id'> {
   _id: string;
   mode: WorkflowMode;
   autoApprovalEnabled: boolean;

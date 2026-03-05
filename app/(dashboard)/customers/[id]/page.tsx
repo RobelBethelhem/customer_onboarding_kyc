@@ -785,7 +785,7 @@ export default function CustomerDetailPage() {
                     <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Account Tier</p>
                   </div>
                   <InfoItem label="Tier" value={customer.tierName} />
-                  <InfoItem label="Tier ID" value={customer.tierId} />
+                  <InfoItem label="Tier ID" value={customer.tierId || ''} />
                   <InfoItem label="Interest Rate" value={`${customer.tierInterestRate || 0}% p.a.`} />
                 </>
               )}

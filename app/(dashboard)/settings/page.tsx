@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   User, Bell, Shield, Database, Save, Eye, EyeOff,
   Workflow, Zap, UserCheck, AlertCircle, CheckCircle2,
   Info, Loader2, RefreshCw, Gift, Plus, Trash2
 } from 'lucide-react';
+import { useAuth, UserRole } from '@/components/AuthProvider';
 
 interface WorkflowSettings {
   mode: 'auto' | 'manual';
@@ -63,9 +64,24 @@ const defaultWorkflowSettings: WorkflowSettings = {
   flexcubeEndpoint: 'http://localhost:5000/api/flexcube/create-customer',
 };
 
+const allTabs: Array<{ id: string; label: string; icon: any; roles: UserRole[] }> = [
+  { id: 'workflow', label: 'KYC Workflow', icon: Workflow, roles: ['admin', 'kyc'] },
+  { id: 'referral', label: 'Referral Program', icon: Gift, roles: ['admin', 'marketing'] },
+  { id: 'profile', label: 'Profile', icon: User, roles: ['admin', 'kyc'] },
+  { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'kyc'] },
+];
+
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'workflow' | 'notifications' | 'referral'>('workflow');
+
+  const visibleTabs = useMemo(() =>
+    allTabs.filter(tab => user && tab.roles.includes(user.role)),
+    [user]
+  );
+
+  const defaultTab = visibleTabs.length > 0 ? visibleTabs[0].id : 'workflow';
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [loading, setLoading] = useState(true);
 
@@ -309,15 +325,10 @@ export default function SettingsPage() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex gap-8">
-          {[
-            { id: 'workflow', label: 'KYC Workflow', icon: Workflow },
-            { id: 'referral', label: 'Referral Program', icon: Gift },
-            { id: 'profile', label: 'Profile', icon: User },
-            { id: 'notifications', label: 'Notifications', icon: Bell },
-          ].map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 pb-4 px-1 border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'

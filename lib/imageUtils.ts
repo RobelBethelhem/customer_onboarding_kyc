@@ -75,7 +75,7 @@ export function hasValidPhoto(photoData: string | undefined | null): boolean {
   if (photoData.startsWith('data:image')) {
     // Has data URI prefix - check if there's actual content after prefix
     const base64Part = photoData.split(',')[1];
-    return base64Part && base64Part.length > 100; // Arbitrary minimum for real image
+    return !!base64Part && base64Part.length > 100; // Arbitrary minimum for real image
   }
 
   // Raw base64 - check if it looks valid and has enough content
