@@ -255,6 +255,9 @@ export async function POST(request: Request) {
       customerType: body.customerType || 'Individual',
       idType: body.idType || 'National ID',
       nationality: body.nationality || 'ETHIOPIA',
+      // Maker / Checker tracking — maker = who submitted the application
+      maker: body.channel === 'web' ? 'WEB_USER' : body.channel === 'mobile_app' ? 'MOBILE_USER' : (body.channel || 'UNKNOWN').toUpperCase(),
+      makerTimestamp: new Date(),
       // Referral tracking
       referralCode: body.referralCode || '',
       // Marriage certificate photo (only for married customers)

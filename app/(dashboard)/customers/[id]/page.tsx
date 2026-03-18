@@ -13,6 +13,7 @@ import {
   fetchCustomer, approveCustomer, rejectCustomer,
   Customer, getStatusColor, getStatusLabel, formatDate
 } from '@/lib/api';
+import { useAuth } from '@/components/AuthProvider';
 import { ensureDataUri, hasValidPhoto } from '@/lib/imageUtils';
 import { toast } from 'sonner';
 
@@ -105,6 +106,7 @@ function getPromotionTypeLabel(code: string): string {
 export default function CustomerDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isApproving, setIsApproving] = useState(false);
@@ -137,7 +139,7 @@ export default function CustomerDetailPage() {
     if (!customer) return;
     setIsApproving(true);
     try {
-      const response = await approveCustomer(customer.customerId, 'KYC Officer');
+      const response = await approveCustomer(customer.customerId, user?.name || user?.email || 'KYC Officer');
       if (response.success) {
         const { cifNumber, accountNumber } = response.data;
 

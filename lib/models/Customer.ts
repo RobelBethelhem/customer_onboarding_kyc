@@ -75,6 +75,9 @@ export interface ICustomer extends Document {
   customerType?: string;             // Customer type (default: 'Individual')
   idType?: string;                   // ID type (default: 'National ID')
   nationality?: string;              // Nationality (default: 'ETHIOPIA')
+  // Maker / Checker tracking
+  maker?: string;                      // Who submitted the application (e.g., 'WEB_USER', 'MOBILE_USER', user email)
+  makerTimestamp?: Date;               // When the application was submitted
   // Referral tracking
   referralCode?: string;              // Referral code used by this customer (e.g., REF-0015678)
 }
@@ -170,6 +173,9 @@ const CustomerSchema = new Schema<ICustomer>({
   customerType: { type: String, default: 'Individual' },
   idType: { type: String, default: 'National ID' },
   nationality: { type: String, default: 'ETHIOPIA' },
+  // Maker / Checker tracking
+  maker: { type: String, default: '' },
+  makerTimestamp: { type: Date },
   // Referral tracking
   referralCode: { type: String, default: '' },
 }, {

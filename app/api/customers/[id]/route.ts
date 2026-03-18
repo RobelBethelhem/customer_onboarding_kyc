@@ -122,6 +122,8 @@ export async function PATCH(
           accountTypeId: customer.accountTypeId || 'SPRI',
           promotionType: customer.promotionType || 'Walk in customer',
           customerSegmentation: customer.customerSegmentation || 'RETAIL CUSTOMER',
+          maker: customer.maker || 'WEB_USER',
+          checker: (approvedBy || 'KYC_OFFICER').toUpperCase().replace(/\s+/g, '_'),
         }, flexcubeConfig);
 
         if (result.success) {
@@ -213,6 +215,35 @@ export async function PATCH(
       console.log(`[SMS] To: ${customer.phone}`);
       console.log(`[SMS] Dear ${customer.fullName}, your Zemen Bank account has been created!`);
       console.log(`[SMS] CIF: ${cifNumber} | Account: ${accountNumber}`);
+
+      // ========== SAVE CUSTOMER PHOTO TO FLEXCUBE ORACLE DB ==========
+      if (cifNumber && customer.faydaPhoto && flexcubeEnabled) {
+        const FAYDA_BACKEND_URL = process.env.FAYDA_BACKEND_URL || 'http://localhost:5000';
+        try {
+          const photoRes = await fetch(`${FAYDA_BACKEND_URL}/api/flexcube/save-customer-photo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerNo: cifNumber,
+              branchCode: customer.branchCode || '103',
+              fullName: customer.fullName,
+              photo: customer.faydaPhoto,
+              maker: customer.maker || 'WEB_USER',
+              makerTimestamp: (customer.makerTimestamp || customer.createdAt || new Date()).toISOString(),
+              checker: (approvedBy || 'KYC_OFFICER').toUpperCase().replace(/\s+/g, '_'),
+            }),
+          });
+          const photoData = await photoRes.json();
+          if (photoData.success) {
+            console.log(`[Photo] Customer photo saved to FlexCube DB for CIF: ${cifNumber}`);
+          } else {
+            console.error(`[Photo] Failed to save photo: ${photoData.error}`);
+          }
+        } catch (err: any) {
+          console.error(`[Photo] Error saving customer photo to FlexCube DB:`, err.message);
+          // Non-blocking — CIF/Account already created successfully
+        }
+      }
 
       // ========== REFERRAL REWARD DISTRIBUTION ==========
       // If this customer was referred, distribute rewards to the referrer chain

@@ -60,6 +60,9 @@ export interface CreateCIFRequest {
   accountTypeId?: string;
   promotionType?: string;
   customerSegmentation?: string;
+  // Maker / Checker
+  maker?: string;
+  checker?: string;
 }
 
 export interface CreateCIFResult {
@@ -512,11 +515,11 @@ function buildCreateCustomerEnvelope(data: CreateCIFRequest, config: FlexCubeCon
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>MAKER</fcub:FLDNAM>
-                        <fcub:FLDVAL>ZERIHUNT</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml((data.maker || 'FYDA_USR').toUpperCase())}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>CHECKER</fcub:FLDNAM>
-                        <fcub:FLDVAL>EPHREMT</fcub:FLDVAL>
+                        <fcub:FLDVAL>${escapeXml((data.checker || 'FYDA_USR').toUpperCase())}</fcub:FLDVAL>
                     </fcub:UDFDETAILS>
                     <fcub:UDFDETAILS>
                         <fcub:FLDNAM>FAYDA_PHONE_NUMBER</fcub:FLDNAM>
@@ -1033,6 +1036,8 @@ export async function createCustomerAndAccount(
     accountTypeId: string;
     promotionType?: string;
     customerSegmentation?: string;
+    maker?: string;
+    checker?: string;
   },
   config: FlexCubeConfig = defaultFlexCubeConfig
 ): Promise<{
