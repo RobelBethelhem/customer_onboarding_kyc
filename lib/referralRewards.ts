@@ -137,6 +137,32 @@ export async function distributeReferralRewards(
       console.log(`[Referral] Level 1 reward: ${level1Points} points → ${referral.referrerCustomerNumber} (${referral.referrerName})`);
     }
 
+    // Referee reward: award points to the new customer if configured
+    const refereePointsEnabled = (config as any).refereePointsEnabled;
+    const refereePointsAmount = (config as any).refereePoints || 0;
+    if (refereePointsEnabled && refereePointsAmount > 0 && refereeCustomerNumber) {
+      const refereeBalance = await getPointsBalance(refereeCustomerNumber);
+      await RewardTransaction.create({
+        customerNumber: refereeCustomerNumber,
+        type: 'earn_referral',
+        points: refereePointsAmount,
+        balanceAfter: refereeBalance + refereePointsAmount,
+        description: `Welcome bonus: Referred by ${referral.referrerName} (Referee reward)`,
+        referralId: referral._id,
+        refereeCustomerNumber: refereeCustomerNumber,
+        level: 0,
+        performedBy: 'system',
+      });
+
+      details.push({
+        customerNumber: refereeCustomerNumber,
+        level: 0,
+        points: refereePointsAmount,
+      });
+
+      console.log(`[Referral] Referee reward: ${refereePointsAmount} points → ${refereeCustomerNumber} (${refereeName || refereeCustomerId})`);
+    }
+
     // Levels 2+: Walk the ancestorChain backward
     // ancestorChain = ['grandparent_custno', 'parent_custno'] (root → direct parent)
     // We need to walk backward: parent_custno gets level 2, grandparent gets level 3, etc.

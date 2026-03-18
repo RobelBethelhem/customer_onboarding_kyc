@@ -78,9 +78,18 @@ export async function PUT(request: NextRequest) {
     }
 
     // Build update object — only include allowed fields
+    // Validate refereePoints if provided
+    if (body.refereePoints !== undefined && (typeof body.refereePoints !== 'number' || body.refereePoints < 0)) {
+      return NextResponse.json({
+        success: false,
+        error: 'refereePoints must be a number >= 0',
+      }, { status: 400 });
+    }
+
     const allowedFields = [
       'enabled', 'maxLevels', 'levelRewards', 'pointsToEtbRate',
       'minRedeemablePoints', 'referralExpiryDays', 'maxReferralsPerCustomer',
+      'refereePointsEnabled', 'refereePoints',
       'webAppBaseUrl',
     ];
 

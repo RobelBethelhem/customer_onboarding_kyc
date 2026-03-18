@@ -33,6 +33,8 @@ interface ReferralSettings {
   minRedeemablePoints: number;
   referralExpiryDays: number;
   maxReferralsPerCustomer: number;
+  refereePointsEnabled: boolean;
+  refereePoints: number;
   webAppBaseUrl: string;
 }
 
@@ -44,6 +46,8 @@ const defaultReferralSettings: ReferralSettings = {
   minRedeemablePoints: 100,
   referralExpiryDays: 90,
   maxReferralsPerCustomer: 0,
+  refereePointsEnabled: false,
+  refereePoints: 0,
   webAppBaseUrl: 'http://localhost:3000',
 };
 
@@ -197,6 +201,8 @@ export default function SettingsPage() {
           minRedeemablePoints: data.data.minRedeemablePoints ?? 100,
           referralExpiryDays: data.data.referralExpiryDays ?? 90,
           maxReferralsPerCustomer: data.data.maxReferralsPerCustomer ?? 0,
+          refereePointsEnabled: data.data.refereePointsEnabled ?? false,
+          refereePoints: data.data.refereePoints ?? 0,
           webAppBaseUrl: data.data.webAppBaseUrl || 'http://localhost:3000',
         });
       }
@@ -916,6 +922,68 @@ export default function SettingsPage() {
                     {referralSettings.levelRewards.length > 2 && ', and so on up the chain'}.
                   </p>
                 </div>
+              </div>
+
+              {/* Referee (New Customer) Rewards */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-1">Referee Rewards</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Optionally award points to the new customer (referee) when they complete onboarding through a referral link.
+                </p>
+
+                <div className="flex items-center justify-between py-3 border-b mb-4">
+                  <div>
+                    <p className="font-medium text-gray-700">Award Points to Referee</p>
+                    <p className="text-sm text-gray-500">New customers earn points when they sign up via a referral link</p>
+                  </div>
+                  <button
+                    onClick={() => setReferralSettings({ ...referralSettings, refereePointsEnabled: !referralSettings.refereePointsEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      referralSettings.refereePointsEnabled ? 'bg-green-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      referralSettings.refereePointsEnabled ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {referralSettings.refereePointsEnabled && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Points for Referee
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={referralSettings.refereePoints}
+                        onChange={(e) => setReferralSettings({
+                          ...referralSettings,
+                          refereePoints: parseInt(e.target.value) || 0,
+                        })}
+                        min="0"
+                        className="w-32 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <span className="text-sm text-gray-500">points</span>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                      <p className="text-sm text-purple-700">
+                        <span className="font-medium">How it works:</span> When a referred customer completes onboarding, they will receive{' '}
+                        <span className="font-bold">{referralSettings.refereePoints} points</span> as a welcome bonus
+                        ({(referralSettings.refereePoints * referralSettings.pointsToEtbRate).toFixed(2)} ETB equivalent).
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!referralSettings.refereePointsEnabled && (
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-500">
+                      Referee rewards are disabled. Only referrers will earn points.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Points-to-ETB Conversion */}

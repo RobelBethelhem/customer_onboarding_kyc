@@ -26,6 +26,10 @@ export interface IReferralConfig extends Omit<Document, '_id'> {
   // Limits
   maxReferralsPerCustomer: number;  // Max referrals one customer can make (0 = unlimited)
 
+  // Referee (new customer) rewards
+  refereePointsEnabled: boolean;  // Toggle: award points to the referred customer
+  refereePoints: number;          // Points awarded to the referee upon completing onboarding
+
   // Web app base URL for generating referral links
   webAppBaseUrl: string;
 
@@ -57,6 +61,9 @@ const ReferralConfigSchema = new Schema<IReferralConfig>({
 
   maxReferralsPerCustomer: { type: Number, default: 0, min: 0 },
 
+  refereePointsEnabled: { type: Boolean, default: false },
+  refereePoints: { type: Number, default: 0, min: 0 },
+
   webAppBaseUrl: { type: String, default: 'http://localhost:3000' },
 
   updatedBy: { type: String, default: 'system' },
@@ -75,6 +82,8 @@ export const defaultReferralConfig: Partial<IReferralConfig> = {
   minRedeemablePoints: 100,
   referralExpiryDays: 90,
   maxReferralsPerCustomer: 0,
+  refereePointsEnabled: false,
+  refereePoints: 0,
   webAppBaseUrl: 'http://localhost:3000',
   updatedBy: 'system',
 };
