@@ -6,6 +6,7 @@ import { createCustomerAndAccount, FlexCubeConfig, queryCustomerByCustNo } from 
 import Referral, { migrateReferralIndexes } from '@/lib/models/Referral';
 import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
 import { distributeReferralRewards } from '@/lib/referralRewards';
+import { sendSMS } from '@/lib/sms';
 
 // Run referral index migration once on first request
 let referralIndexesMigrated = false;
@@ -389,6 +390,14 @@ export async function POST(request: Request) {
     console.log('=== END DEBUG ===');
 
     const customer = await Customer.create(customerData);
+
+    // ========== SMS: APPLICATION SUBMITTED ==========
+    if (customer.phone) {
+      sendSMS(
+        customer.phone,
+        `Dear ${customer.fullName},\n\nYour account opening request has been submitted successfully. Our team will review your application and reach out to you soon.\n\nThank you for choosing Zemen Bank!`
+      ); // fire-and-forget — don't await
+    }
 
     // ========== REFERRAL LINKING ==========
     // If the customer was referred, create/link the Referral document

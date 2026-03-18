@@ -6,6 +6,7 @@ import { createCustomerAndAccount, FlexCubeConfig, queryCustomerByCustNo } from 
 import { distributeReferralRewards } from '@/lib/referralRewards';
 import Referral from '@/lib/models/Referral';
 import ReferralConfig, { defaultReferralConfig } from '@/lib/models/ReferralConfig';
+import { sendSMS } from '@/lib/sms';
 
 /**
  * Build FlexCube config from workflow settings
@@ -211,10 +212,13 @@ export async function PATCH(
       console.log(`Message: ${flexcubeMessage}`);
       console.log(`====================================\n`);
 
-      // ========== SMS NOTIFICATION (simulated) ==========
-      console.log(`[SMS] To: ${customer.phone}`);
-      console.log(`[SMS] Dear ${customer.fullName}, your Zemen Bank account has been created!`);
-      console.log(`[SMS] CIF: ${cifNumber} | Account: ${accountNumber}`);
+      // ========== SMS NOTIFICATION: ACCOUNT APPROVED ==========
+      if (customer.phone) {
+        sendSMS(
+          customer.phone,
+          `Dear ${customer.fullName},\n\nYour Zemen Bank account has been approved and created successfully!\n\nCIF Number: ${cifNumber}\nAccount Number: ${accountNumber}\nBranch: ${customer.branch}\n\nThank you for banking with Zemen Bank!`
+        ); // fire-and-forget — don't await
+      }
 
       // ========== SAVE CUSTOMER PHOTO TO FLEXCUBE ORACLE DB ==========
       if (cifNumber && customer.faydaPhoto && flexcubeEnabled) {
