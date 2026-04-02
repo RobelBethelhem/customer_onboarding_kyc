@@ -119,107 +119,83 @@ export async function POST(request: Request) {
     console.log('Total active sanctions entries:', sanctions.length);
 
     const matches: any[] = [];
-    const MATCH_THRESHOLD = 75; // Minimum score to be considered a match
+    const FULL_NAME_THRESHOLD = 80; // Minimum full-name score to be considered a match
 
     for (const entry of sanctions) {
       const matchedFields: string[] = [];
-      let totalScore = 0;
-      let fieldCount = 0;
 
-      // Check first name (case-insensitive)
+      // ── PRIMARY CHECK: Compare FULL NAMES as a whole ──
+      // This avoids false positives from individual field matching
+      // (e.g., "Solomon" customer vs "Solomon" in sanctions who are different people)
+      const fullNameScore = calculateSimilarity(customerFullName, entry.fullName);
+
+      // Also compute individual scores for logging/detail purposes only
       const firstNameScore = calculateSimilarity(firstName, entry.firstName);
-      if (firstNameScore >= MATCH_THRESHOLD) {
-        matchedFields.push('firstName');
-        totalScore += firstNameScore;
-        fieldCount++;
-      }
-
-      // Check last name (case-insensitive)
       const lastNameScore = calculateSimilarity(lastName, entry.lastName);
-      if (lastNameScore >= MATCH_THRESHOLD) {
-        matchedFields.push('lastName');
-        totalScore += lastNameScore;
-        fieldCount++;
-      }
-
-      // Check middle name if provided (case-insensitive)
       let middleNameScore = 0;
       if (middleName && entry.middleName) {
         middleNameScore = calculateSimilarity(middleName, entry.middleName);
-        if (middleNameScore >= MATCH_THRESHOLD) {
-          matchedFields.push('middleName');
-          totalScore += middleNameScore;
-          fieldCount++;
-        }
       }
 
-      // Check full name (case-insensitive)
-      const fullNameScore = calculateSimilarity(customerFullName, entry.fullName);
-      if (fullNameScore >= MATCH_THRESHOLD) {
-        matchedFields.push('fullName');
-        totalScore += fullNameScore;
-        fieldCount++;
-      }
-
-      // Check aliases
-      let aliasScore = 0;
+      // ── CHECK ALIASES against full name ──
+      let bestAliasScore = 0;
       if (entry.aliases && entry.aliases.length > 0) {
         for (const alias of entry.aliases) {
           if (alias.fullName) {
-            aliasScore = calculateSimilarity(customerFullName, alias.fullName);
-            if (aliasScore >= MATCH_THRESHOLD) {
-              matchedFields.push('alias');
-              totalScore += aliasScore;
-              fieldCount++;
-              break; // Only count one alias match
+            const aliasScore = calculateSimilarity(customerFullName, alias.fullName);
+            if (aliasScore > bestAliasScore) {
+              bestAliasScore = aliasScore;
             }
           }
         }
       }
 
-      // Check date of birth if provided
+      // The effective score is the best of fullName vs entry.fullName or any alias
+      const effectiveScore = Math.max(fullNameScore, bestAliasScore);
+
+      // Track which fields contributed
+      if (fullNameScore >= FULL_NAME_THRESHOLD) matchedFields.push('fullName');
+      if (bestAliasScore >= FULL_NAME_THRESHOLD) matchedFields.push('alias');
+      if (firstNameScore >= 80) matchedFields.push('firstName');
+      if (lastNameScore >= 80) matchedFields.push('lastName');
+      if (middleNameScore >= 80) matchedFields.push('middleName');
+
+      // Check date of birth if provided (bonus signal, not primary)
+      let dobMatch = false;
       if (dateOfBirth && entry.dateOfBirth) {
-        const customerDob = new Date(dateOfBirth).toISOString().split('T')[0];
-        const entryDob = new Date(entry.dateOfBirth).toISOString().split('T')[0];
-        if (customerDob === entryDob) {
-          matchedFields.push('dateOfBirth');
-          totalScore += 100;
-          fieldCount++;
-        }
+        try {
+          const customerDob = new Date(dateOfBirth).toISOString().split('T')[0];
+          const entryDob = new Date(entry.dateOfBirth).toISOString().split('T')[0];
+          if (customerDob === entryDob) {
+            matchedFields.push('dateOfBirth');
+            dobMatch = true;
+          }
+        } catch {}
       }
 
-      // Calculate average match score
-      const avgScore = fieldCount > 0 ? Math.round(totalScore / fieldCount) : 0;
+      console.log(`Checking "${entry.fullName}": fullName=${fullNameScore}%, alias=${bestAliasScore}%, effective=${effectiveScore}%, first=${firstNameScore}%, middle=${middleNameScore}%, last=${lastNameScore}%`);
 
-      // MATCH CRITERIA (less strict to catch more matches):
-      // 1. Full name matches >= 85% (strong full name match alone is enough)
-      // 2. First AND Last name both match >= 80% (both names matching)
-      // 3. At least 2 fields match with avg score >= 75%
-      const isFullNameMatch = fullNameScore >= 85;
-      const isFirstLastMatch = firstNameScore >= 80 && lastNameScore >= 80;
-      const isMultiFieldMatch = matchedFields.length >= 2 && avgScore >= MATCH_THRESHOLD;
+      // ── MATCH DECISION: Based on full-name similarity only ──
+      // Score >= 80% on the WHOLE name (customer vs sanction entry) = flagged
+      // DOB match with score >= 70% also flags (strong corroboration)
+      const isFullNameMatch = effectiveScore >= FULL_NAME_THRESHOLD;
+      const isDobCorroborated = dobMatch && effectiveScore >= 70;
 
-      console.log(`Checking ${entry.fullName}: fullName=${fullNameScore}%, first=${firstNameScore}%, last=${lastNameScore}%, middle=${middleNameScore}%`);
-
-      if (isFullNameMatch || isFirstLastMatch || isMultiFieldMatch) {
-        const overallScore = isFullNameMatch ? fullNameScore :
-                            isFirstLastMatch ? Math.round((firstNameScore + lastNameScore) / 2) :
-                            avgScore;
-
+      if (isFullNameMatch || isDobCorroborated) {
         matches.push({
           sanctionEntryId: entry._id.toString(),
           entryId: entry.entryId,
           fullName: entry.fullName,
           sanctionType: entry.sanctionType,
           sourceId: entry.sourceId,
-          matchScore: overallScore,
-          overallScore: overallScore,
-          matchStrength: getMatchStrength(overallScore),
+          matchScore: effectiveScore,
+          overallScore: effectiveScore,
+          matchStrength: getMatchStrength(effectiveScore),
           matchedFields,
           reason: entry.reason,
         });
 
-        console.log(`MATCH FOUND: ${entry.fullName} - Score: ${overallScore}%, Type: ${entry.sanctionType}`);
+        console.log(`MATCH FOUND: ${entry.fullName} - Score: ${effectiveScore}%, Type: ${entry.sanctionType}`);
       }
     }
 
