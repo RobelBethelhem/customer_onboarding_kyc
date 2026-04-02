@@ -613,8 +613,8 @@ export default function CustomerDetailPage() {
                         style={{ maxHeight: '400px' }}
                         preload="metadata"
                       >
-                        <source src={`http://localhost:5000/api/face/video/${customer.faceVideoId}`} type="video/webm" />
-                        <source src={`http://localhost:5000/api/face/video/${customer.faceVideoId}`} type="video/mp4" />
+                        <source src={`/api/face/video/${customer.faceVideoId}`} type="video/webm" />
+                        <source src={`/api/face/video/${customer.faceVideoId}`} type="video/mp4" />
                         Your browser does not support the video tag.
                       </video>
                       <div className="mt-3 flex items-start gap-2 p-3 bg-violet-50 rounded-lg">
