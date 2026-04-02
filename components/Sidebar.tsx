@@ -33,8 +33,8 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'kyc'] },
   { name: 'Pending Review', href: '/pending', icon: Clock, badge: true, roles: ['admin', 'kyc'] },
-  { name: 'Auto Approved', href: '/auto-approved', icon: Zap, roles: ['admin', 'kyc'] },
-  { name: 'Manually Approved', href: '/approved', icon: CheckCircle2, roles: ['admin', 'kyc'] },
+  { name: 'Auto Approved', href: '/auto-approved', icon: Zap, roles: ['admin', 'kyc', 'branch'] },
+  { name: 'Manually Approved', href: '/approved', icon: CheckCircle2, roles: ['admin', 'kyc', 'branch'] },
   { name: 'Rejected', href: '/rejected', icon: XCircle, roles: ['admin', 'kyc'] },
   { name: 'Sanctions & PEP', href: '/sanctions', icon: Shield, roles: ['admin', 'kyc'] },
   { name: 'Executive Review', href: '/executive-review', icon: TrendingUp, divider: true, roles: ['admin', 'kyc'] },
@@ -78,6 +78,7 @@ export default function Sidebar() {
       case 'admin': return 'Administrator';
       case 'kyc': return 'KYC Officer';
       case 'marketing': return 'Marketing';
+      case 'branch': return `Branch (${user?.branchCode || ''})`;
       default: return 'User';
     }
   };

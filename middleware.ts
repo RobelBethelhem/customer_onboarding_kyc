@@ -42,6 +42,14 @@ function checkPageAccess(role: string, path: string): boolean {
     return false;
   }
 
+  if (role === 'branch') {
+    // Branch users can only view approved customers and customer details (read-only)
+    if (path === '/approved' || path.startsWith('/approved/')) return true;
+    if (path === '/auto-approved' || path.startsWith('/auto-approved/')) return true;
+    if (path.startsWith('/customers/')) return true; // customer detail view
+    return false;
+  }
+
   return false;
 }
 
@@ -61,6 +69,13 @@ function checkApiAccess(role: string, method: string, pathname: string): boolean
   if (role === 'marketing') {
     // Marketing can only access referral endpoints
     if (pathname.startsWith('/api/referrals')) return true;
+    return false;
+  }
+
+  if (role === 'branch') {
+    // Branch users: read-only access to customers (GET only)
+    if (pathname.startsWith('/api/customers') && method === 'GET') return true;
+    if (pathname === '/api/stats' && method === 'GET') return true;
     return false;
   }
 
@@ -105,6 +120,7 @@ export async function middleware(request: NextRequest) {
     const userId = payload.userId as string;
     const email = payload.email as string;
     const name = payload.name as string;
+    const branchCode = (payload.branchCode as string) || '';
 
     // Page-level role check
     if (!pathname.startsWith('/api/')) {
@@ -112,6 +128,9 @@ export async function middleware(request: NextRequest) {
         // Redirect to appropriate landing page
         if (role === 'marketing') {
           return NextResponse.redirect(createRedirectUrl(request, '/referrals'));
+        }
+        if (role === 'branch') {
+          return NextResponse.redirect(createRedirectUrl(request, '/approved'));
         }
         return NextResponse.redirect(createRedirectUrl(request, '/'));
       }
@@ -130,6 +149,7 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-role', role);
     requestHeaders.set('x-user-email', email || '');
     requestHeaders.set('x-user-name', name || '');
+    requestHeaders.set('x-user-branch', branchCode);
 
     return NextResponse.next({
       request: { headers: requestHeaders },

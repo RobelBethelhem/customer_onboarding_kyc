@@ -10,6 +10,7 @@ export interface JWTPayload {
   email: string;
   name: string;
   role: UserRole;
+  branchCode?: string;
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {

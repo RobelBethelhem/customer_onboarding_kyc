@@ -12,14 +12,24 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const skip = parseInt(searchParams.get('skip') || '0');
 
+    // Branch role: force filter to approved customers of their branch only
+    const userRole = request.headers.get('x-user-role');
+    const userBranch = request.headers.get('x-user-branch');
+
     let query: any = {};
 
-    // Filter by status
-    if (status && status !== 'all') {
-      if (status === 'pending_all') {
-        query.status = { $in: ['pending', 'verified'] };
-      } else {
-        query.status = status;
+    if (userRole === 'branch' && userBranch) {
+      // Branch users can ONLY see approved/auto_approved customers from their branch
+      query.status = { $in: ['approved', 'auto_approved'] };
+      query.branchCode = userBranch;
+    } else {
+      // Filter by status (normal behavior for admin/kyc)
+      if (status && status !== 'all') {
+        if (status === 'pending_all') {
+          query.status = { $in: ['pending', 'verified'] };
+        } else {
+          query.status = status;
+        }
       }
     }
 

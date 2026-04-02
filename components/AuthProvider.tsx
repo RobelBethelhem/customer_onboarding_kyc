@@ -3,13 +3,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type UserRole = 'admin' | 'kyc' | 'marketing';
+export type UserRole = 'admin' | 'kyc' | 'marketing' | 'branch';
 
 interface AuthUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  branchCode?: string;
 }
 
 interface AuthContextType {

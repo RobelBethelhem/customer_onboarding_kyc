@@ -17,7 +17,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const { name, role, isActive, password } = body;
+    const { name, role, isActive, password, branchCode } = body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -25,7 +25,8 @@ export async function PATCH(
     }
 
     if (name) user.name = name;
-    if (role && ['admin', 'kyc', 'marketing'].includes(role)) user.role = role;
+    if (role && ['admin', 'kyc', 'marketing', 'branch'].includes(role)) user.role = role;
+    if (typeof branchCode === 'string') user.branchCode = branchCode;
     if (typeof isActive === 'boolean') user.isActive = isActive;
     if (password && password.length >= 6) {
       user.passwordHash = await hashPassword(password);

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const { email, password, name, role } = await request.json();
+    const { email, password, name, role, branchCode } = await request.json();
 
     if (!email || !password || !name || !role) {
       return NextResponse.json(
@@ -41,9 +41,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['admin', 'kyc', 'marketing'].includes(role)) {
+    if (!['admin', 'kyc', 'marketing', 'branch'].includes(role)) {
       return NextResponse.json(
-        { success: false, error: 'Role must be admin, kyc, or marketing' },
+        { success: false, error: 'Role must be admin, kyc, marketing, or branch' },
+        { status: 400 }
+      );
+    }
+
+    if (role === 'branch' && !branchCode) {
+      return NextResponse.json(
+        { success: false, error: 'Branch code is required for branch role' },
         { status: 400 }
       );
     }
@@ -70,6 +77,7 @@ export async function POST(request: NextRequest) {
       passwordHash,
       name,
       role,
+      branchCode: role === 'branch' ? branchCode : '',
       isActive: true,
     });
 

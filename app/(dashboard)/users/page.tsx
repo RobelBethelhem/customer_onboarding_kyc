@@ -11,7 +11,8 @@ interface UserRecord {
   _id: string;
   email: string;
   name: string;
-  role: 'admin' | 'kyc' | 'marketing';
+  role: 'admin' | 'kyc' | 'marketing' | 'branch';
+  branchCode?: string;
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -26,7 +27,8 @@ export default function UserManagementPage() {
     email: '',
     password: '',
     name: '',
-    role: 'kyc' as 'admin' | 'kyc' | 'marketing',
+    role: 'kyc' as 'admin' | 'kyc' | 'marketing' | 'branch',
+    branchCode: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,14 +55,14 @@ export default function UserManagementPage() {
 
   function openCreateForm() {
     setEditingUser(null);
-    setFormData({ email: '', password: '', name: '', role: 'kyc' });
+    setFormData({ email: '', password: '', name: '', role: 'kyc', branchCode: '' });
     setError('');
     setShowForm(true);
   }
 
   function openEditForm(user: UserRecord) {
     setEditingUser(user);
-    setFormData({ email: user.email, password: '', name: user.name, role: user.role });
+    setFormData({ email: user.email, password: '', name: user.name, role: user.role, branchCode: user.branchCode || '' });
     setError('');
     setShowForm(true);
   }
@@ -73,7 +75,7 @@ export default function UserManagementPage() {
     try {
       if (editingUser) {
         // Update
-        const body: any = { name: formData.name, role: formData.role };
+        const body: any = { name: formData.name, role: formData.role, branchCode: formData.branchCode };
         if (formData.password) body.password = formData.password;
 
         const res = await fetch(`/api/users/${editingUser._id}`, {
@@ -152,6 +154,8 @@ export default function UserManagementPage() {
         return <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">KYC</span>;
       case 'marketing':
         return <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Marketing</span>;
+      case 'branch':
+        return <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-700">Branch</span>;
       default:
         return <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{role}</span>;
     }
@@ -265,8 +269,24 @@ export default function UserManagementPage() {
                   <option value="admin">Admin - Full access</option>
                   <option value="kyc">KYC - All except referrals & user management</option>
                   <option value="marketing">Marketing - Referral program only</option>
+                  <option value="branch">Branch - View approved customers (read-only)</option>
                 </select>
               </div>
+
+              {formData.role === 'branch' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch Code</label>
+                  <input
+                    type="text"
+                    value={formData.branchCode}
+                    onChange={(e) => setFormData({ ...formData, branchCode: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900"
+                    required
+                    placeholder="e.g., 103, 164"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">This user will only see approved customers from this branch</p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
@@ -301,6 +321,7 @@ export default function UserManagementPage() {
             <tr>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
@@ -317,6 +338,9 @@ export default function UserManagementPage() {
                   </div>
                 </td>
                 <td className="px-6 py-4">{getRoleBadge(user.role)}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {user.role === 'branch' && user.branchCode ? user.branchCode : '-'}
+                </td>
                 <td className="px-6 py-4">
                   {user.isActive ? (
                     <span className="flex items-center gap-1.5 text-green-600 text-sm">
@@ -379,7 +403,7 @@ export default function UserManagementPage() {
           <Shield className="w-5 h-5" />
           Role Permissions
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="font-medium text-purple-700 mb-1">Admin</p>
             <p className="text-gray-600">Full access to all features including user management</p>
@@ -391,6 +415,10 @@ export default function UserManagementPage() {
           <div>
             <p className="font-medium text-green-700 mb-1">Marketing</p>
             <p className="text-gray-600">Referral program dashboard and configuration only</p>
+          </div>
+          <div>
+            <p className="font-medium text-orange-700 mb-1">Branch</p>
+            <p className="text-gray-600">View approved customers from their assigned branch only (read-only)</p>
           </div>
         </div>
       </div>

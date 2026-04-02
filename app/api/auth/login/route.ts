@@ -46,12 +46,13 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       role: user.role,
+      branchCode: user.branchCode || '',
     });
 
     // Set httpOnly cookie
     const response = NextResponse.json({
       success: true,
-      user: { id: user._id, email: user.email, name: user.name, role: user.role },
+      user: { id: user._id, email: user.email, name: user.name, role: user.role, branchCode: user.branchCode || '' },
     });
 
     response.cookies.set('auth-token', token, {
