@@ -359,6 +359,14 @@ export async function PATCH(
       customer.rejectionReason = rejectionReason || 'No reason provided';
       if (rejectedBy) customer.rejectedBy = rejectedBy;
 
+      // ========== SMS NOTIFICATION: APPLICATION REJECTED ==========
+      if (customer.phone) {
+        sendSMS(
+          customer.phone,
+          `Dear ${customer.fullName},\n\nWe regret to inform you that your Zemen Bank account opening request could not be approved at this time.\n\nReason: ${customer.rejectionReason}\n\nFor further clarification, please visit your nearest Zemen Bank branch.\n\nThank you for your interest in Zemen Bank.`
+        ); // fire-and-forget — don't await
+      }
+
     } else {
       // General update
       Object.assign(customer, body);
