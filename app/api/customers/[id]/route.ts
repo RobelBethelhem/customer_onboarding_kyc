@@ -249,6 +249,30 @@ export async function PATCH(
         }
       }
 
+      // ========== SET ACCOUNT TO NO-DEBIT ==========
+      // Business requirement: new accounts opened via onboarding must be
+      // flagged AC_STAT_NO_DR = 'Y' in STTM_CUST_ACCOUNT so no debit can occur
+      // until branch verifies the customer in person.
+      if (accountNumber && flexcubeEnabled) {
+        const FAYDA_BACKEND_URL = process.env.FAYDA_BACKEND_URL || 'http://localhost:5000';
+        try {
+          const noDebitRes = await fetch(`${FAYDA_BACKEND_URL}/api/flexcube/set-no-debit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountNumber }),
+          });
+          const noDebitData = await noDebitRes.json();
+          if (noDebitData.success) {
+            console.log(`[NoDebit] Account ${accountNumber} flagged as No-Debit`);
+          } else {
+            console.error(`[NoDebit] Failed to set No-Debit: ${noDebitData.error}`);
+          }
+        } catch (err: any) {
+          console.error(`[NoDebit] Error calling Fayda backend:`, err.message);
+          // Non-blocking — account is already created successfully
+        }
+      }
+
       // ========== REFERRAL REWARD DISTRIBUTION ==========
       // If this customer was referred, distribute rewards to the referrer chain
       if (customer.referralCode && customer.referralCode.startsWith('REF-')) {
